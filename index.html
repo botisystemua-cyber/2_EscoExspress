@@ -680,6 +680,11 @@ body {
 <button class="fab" onclick="openAddForm()">+</button>
 
 <script>
+// ===== КОНФІГУРАЦІЯ =====
+// Замініть на реальний URL після Deploy GAS → Web App
+const GAS_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
+const USE_MOCK = !GAS_URL || GAS_URL.includes('YOUR_GAS');
+
 // ===== GLOBAL STATE =====
 let allData = [];
 let filteredData = [];
@@ -693,247 +698,168 @@ let routes = [];
 let activeRouteIdx = null;
 let currentView = 'parcels';
 let selectedIds = new Set();
+let isLoading = false;
 
-// ===== MOCK DATA (Passengers + Parcels) =====
-const MOCK_DATA = [
-  {
-    'PKG_ID': 'PKG_001',
-    'Напрям': 'УК→ЄВ',
-    'Тип запису': 'Посилка',
-    'Піб відправника': 'Коваленко Олена Петрівна',
-    'Телефон реєстратора': '+380671234567',
-    'Адреса відправки': 'м. Київ, вул. Хрещатик 1',
-    'Піб отримувача': 'Kovalenko Hans',
-    'Телефон отримувача': '+4917612345678',
-    'Адреса в Європі': 'Berlin, Hauptstr. 10',
-    'Кг': '5.2',
-    'Сума': '850',
-    'Валюта оплати': 'UAH',
-    'Завдаток': '500',
-    'Борг': '350',
-    'Статус оплати': 'Частково',
-    'Статус ліда': 'В роботі',
-    'Статус посилки': 'В дорозі',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '20450000123456',
-    'Номер авто': 'АА 1234 ВВ',
-    'RTE_ID': 'RTE_001',
-    'Примітка': 'Крихке, обережно',
-    'Внутрішній №': '201',
-    'Контроль перевірки': 'Готова до маршруту'
-  },
-  {
-    'PKG_ID': 'PKG_002',
-    'Напрям': 'УК→ЄВ',
-    'Тип запису': 'Посилка',
-    'Піб відправника': 'Мельник Іван Сергійович',
-    'Телефон реєстратора': '+380501112233',
-    'Адреса відправки': 'м. Львів, пл. Ринок 5',
-    'Піб отримувача': 'Melnyk Maria',
-    'Телефон отримувача': '+4915712345678',
-    'Адреса в Європі': 'München, Marienplatz 3',
-    'Кг': '12.0',
-    'Сума': '1500',
-    'Валюта оплати': 'UAH',
-    'Завдаток': '1500',
-    'Борг': '0',
-    'Статус оплати': 'Оплачено',
-    'Статус ліда': 'Підтверджено',
-    'Статус посилки': 'Доставлено',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '20450000654321',
-    'Номер авто': '',
-    'RTE_ID': '',
-    'Примітка': '',
-    'Внутрішній №': '202',
-    'Контроль перевірки': 'Готова до маршруту'
-  },
-  {
-    'PKG_ID': 'PKG_003',
-    'Напрям': 'УК→ЄВ',
-    'Тип запису': 'Посилка',
-    'Піб відправника': 'Шевченко Тетяна Миколаївна',
-    'Телефон реєстратора': '+380939998877',
-    'Адреса відправки': 'м. Одеса, вул. Дерибасівська 12',
-    'Піб отримувача': 'Shevchenko Paul',
-    'Телефон отримувача': '+4917698765432',
-    'Адреса в Європі': 'Zürich, Bahnhofstr. 7',
-    'Кг': '3.1',
-    'Сума': '600',
-    'Валюта оплати': 'EUR',
-    'Завдаток': '0',
-    'Борг': '600',
-    'Статус оплати': 'Не оплачено',
-    'Статус ліда': 'Новий',
-    'Статус посилки': 'Нова',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '',
-    'Номер авто': '',
-    'RTE_ID': '',
-    'Примітка': 'Документи + подарунки',
-    'Внутрішній №': '',
-    'Контроль перевірки': ''
-  },
-  {
-    'PKG_ID': 'PAX_001',
-    'Напрям': 'УК→ЄВ',
-    'Тип запису': 'Пасажир',
-    'Піб відправника': 'Бондаренко Андрій Вікторович',
-    'Телефон реєстратора': '+380661234567',
-    'Адреса відправки': 'м. Київ, вул. Саксаганського 15',
-    'Піб отримувача': '',
-    'Телефон отримувача': '',
-    'Адреса в Європі': 'Warszawa, ul. Marszałkowska 1',
-    'Кг': '25',
-    'Сума': '2500',
-    'Валюта оплати': 'UAH',
-    'Завдаток': '2500',
-    'Борг': '0',
-    'Статус оплати': 'Оплачено',
-    'Статус ліда': 'Підтверджено',
-    'Статус посилки': '',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '',
-    'Номер авто': 'АА 1234 ВВ',
-    'RTE_ID': 'RTE_001',
-    'Примітка': '2 місця',
-    'Місця': '2',
-    'Внутрішній №': '',
-    'Контроль перевірки': ''
-  },
-  {
-    'PKG_ID': 'PAX_002',
-    'Напрям': 'УК→ЄВ',
-    'Тип запису': 'Пасажир',
-    'Піб відправника': 'Литвиненко Оксана Ігорівна',
-    'Телефон реєстратора': '+380971234567',
-    'Адреса відправки': 'м. Харків, вул. Сумська 25',
-    'Піб отримувача': '',
-    'Телефон отримувача': '',
-    'Адреса в Європі': 'Praha, Václavské nám. 1',
-    'Кг': '20',
-    'Сума': '3000',
-    'Валюта оплати': 'CZK',
-    'Завдаток': '1000',
-    'Борг': '2000',
-    'Статус оплати': 'Частково',
-    'Статус ліда': 'В роботі',
-    'Статус посилки': '',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '',
-    'Номер авто': '',
-    'RTE_ID': '',
-    'Примітка': '1 місце + багаж',
-    'Місця': '1',
-    'Внутрішній №': '',
-    'Контроль перевірки': ''
-  },
-  {
-    'PKG_ID': 'PKG_004',
-    'Напрям': 'ЄВ→УК',
-    'Тип запису': 'Посилка',
-    'Піб відправника': 'Schmidt Klaus',
-    'Телефон реєстратора': '+4917612345000',
-    'Адреса відправки': 'Berlin, Alexanderplatz 1',
-    'Піб отримувача': 'Петренко Марія Олексіївна',
-    'Телефон отримувача': '+380501234567',
-    'Місто Нова Пошта': 'м. Київ, відділення №25',
-    'Кг': '8.5',
-    'Сума': '45',
-    'Валюта оплати': 'EUR',
-    'Завдаток': '45',
-    'Борг': '0',
-    'Статус оплати': 'Оплачено',
-    'Статус ліда': 'Підтверджено',
-    'Статус посилки': 'В дорозі',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '',
-    'Номер авто': 'BC 4567 DE',
-    'RTE_ID': 'RTE_002',
-    'Примітка': '',
-    'Внутрішній №': '501',
-    'Контроль перевірки': 'Готова до маршруту'
-  },
-  {
-    'PKG_ID': 'PKG_005',
-    'Напрям': 'ЄВ→УК',
-    'Тип запису': 'Посилка',
-    'Піб відправника': 'Weber Anna',
-    'Телефон реєстратора': '+4915700112233',
-    'Адреса відправки': 'Wien, Stephansplatz 5',
-    'Піб отримувача': 'Сидоренко Ігор Павлович',
-    'Телефон отримувача': '+380671112233',
-    'Місто Нова Пошта': 'м. Львів, відділення №12',
-    'Кг': '2.0',
-    'Сума': '25',
-    'Валюта оплати': 'EUR',
-    'Завдаток': '0',
-    'Борг': '25',
-    'Статус оплати': 'Не оплачено',
-    'Статус ліда': 'Новий',
-    'Статус посилки': 'Нова',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '',
-    'Номер авто': '',
-    'RTE_ID': '',
-    'Примітка': 'Ліки + вітаміни',
-    'Внутрішній №': '',
-    'Контроль перевірки': ''
-  },
-  {
-    'PKG_ID': 'PKG_006',
-    'Напрям': 'УК→ЄВ',
-    'Тип запису': 'Посилка',
-    'Піб відправника': 'Грищенко Віталій Олегович',
-    'Телефон реєстратора': '+380631234567',
-    'Адреса відправки': 'м. Дніпро, пр. Яворницького 8',
-    'Піб отримувача': 'Grishchenko Olga',
-    'Телефон отримувача': '+4917600998877',
-    'Адреса в Європі': 'Hamburg, Reeperbahn 20',
-    'Кг': '7.8',
-    'Сума': '950',
-    'Валюта оплати': 'UAH',
-    'Завдаток': '950',
-    'Борг': '0',
-    'Статус оплати': 'Оплачено',
-    'Статус ліда': 'Відмова',
-    'Статус посилки': '',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '20450000111222',
-    'Номер авто': '',
-    'RTE_ID': '',
-    'Примітка': 'Клієнт відмовився',
-    'Внутрішній №': '203',
-    'Контроль перевірки': ''
-  },
-  {
-    'PKG_ID': 'PAX_003',
-    'Напрям': 'ЄВ→УК',
-    'Тип запису': 'Пасажир',
-    'Піб відправника': 'Müller Friedrich',
-    'Телефон реєстратора': '+4917600112233',
-    'Адреса відправки': 'Frankfurt, Zeil 15',
-    'Піб отримувача': '',
-    'Телефон отримувача': '',
-    'Місто Нова Пошта': 'м. Одеса',
-    'Кг': '30',
-    'Сума': '55',
-    'Валюта оплати': 'EUR',
-    'Завдаток': '55',
-    'Борг': '0',
-    'Статус оплати': 'Оплачено',
-    'Статус ліда': 'Підтверджено',
-    'Статус посилки': '',
-    'Статус CRM': 'Активний',
-    'Номер ТТН': '',
-    'Номер авто': 'BC 4567 DE',
-    'RTE_ID': 'RTE_002',
-    'Примітка': '1 місце',
-    'Місця': '1',
-    'Внутрішній №': '',
-    'Контроль перевірки': ''
+// ===== API MODULE =====
+async function apiPost(action, params = {}) {
+  if (USE_MOCK) return mockApi(action, params);
+
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.textContent = '⏳ Завантаження...';
+  syncEl.style.color = '#f59e0b';
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, ...params })
+    });
+    const data = await res.json();
+
+    syncEl.textContent = '✓ Синхронізовано';
+    syncEl.style.color = 'rgba(255,255,255,0.5)';
+
+    if (!data.ok) {
+      console.error('API error:', data.error);
+      showToast('Помилка: ' + data.error, 'error');
+    }
+    return data;
+  } catch (err) {
+    syncEl.textContent = '✗ Помилка зв\'язку';
+    syncEl.style.color = '#ef4444';
+    console.error('Fetch error:', err);
+    showToast('Немає зв\'язку з сервером', 'error');
+    return { ok: false, error: err.message };
   }
-];
+}
+
+// ===== TOAST NOTIFICATIONS =====
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    padding:10px 20px;border-radius:8px;font-size:12px;font-weight:600;
+    font-family:inherit;z-index:9999;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    transition:opacity 0.3s;
+  `;
+  toast.style.background = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// ===== MOCK API (fallback коли нема GAS URL) =====
+function mockApi(action, params) {
+  // Маппінг GAS полів → фронтенд полів для пасажирів
+  function gasToFrontend(pax) {
+    return {
+      'PKG_ID': pax['PAX_ID'] || pax['PKG_ID'] || '',
+      'Напрям': pax['Напрям'] || 'УК→ЄВ',
+      'Тип запису': 'Пасажир',
+      'Піб відправника': pax['Піб пасажира'] || pax['Піб відправника'] || '',
+      'Телефон реєстратора': pax['Телефон пасажира'] || pax['Телефон реєстратора'] || '',
+      'Адреса відправки': pax['Адреса відправки'] || '',
+      'Адреса в Європі': pax['Адреса прибуття'] || pax['Адреса в Європі'] || '',
+      'Кг': pax['Вага багажу'] || pax['Кг'] || '',
+      'Сума': pax['Сума'] || '',
+      'Валюта оплати': pax['Валюта'] || pax['Валюта оплати'] || 'UAH',
+      'Завдаток': pax['Завдаток'] || '0',
+      'Борг': pax['Борг'] || '0',
+      'Статус оплати': pax['Статус оплати'] || 'Не оплачено',
+      'Статус ліда': pax['Статус ліда'] || 'Новий',
+      'Статус CRM': pax['Статус CRM'] || 'Активний',
+      'Номер авто': pax['Номер авто'] || '',
+      'RTE_ID': pax['RTE_ID'] || '',
+      'Примітка': pax['Примітка'] || '',
+      'Місця': pax['Кількість місць'] || pax['Місця'] || '1',
+      'Контроль перевірки': ''
+    };
+  }
+
+  const MOCK_PASSENGERS = [
+    {
+      'PAX_ID': 'PAX_001', 'Напрям': 'УК→ЄВ',
+      'Піб пасажира': 'Бондаренко Андрій Вікторович',
+      'Телефон пасажира': '+380661234567',
+      'Адреса відправки': 'м. Київ, вул. Саксаганського 15',
+      'Адреса прибуття': 'Warszawa, ul. Marszałkowska 1',
+      'Кількість місць': '2', 'Вага багажу': '25',
+      'Сума': '2500', 'Валюта': 'UAH', 'Завдаток': '2500', 'Борг': '0',
+      'Статус оплати': 'Оплачено', 'Статус ліда': 'Підтверджено', 'Статус CRM': 'Активний',
+      'Номер авто': 'АА 1234 ВВ', 'RTE_ID': 'RTE_001', 'Примітка': '2 місця'
+    },
+    {
+      'PAX_ID': 'PAX_002', 'Напрям': 'УК→ЄВ',
+      'Піб пасажира': 'Литвиненко Оксана Ігорівна',
+      'Телефон пасажира': '+380971234567',
+      'Адреса відправки': 'м. Харків, вул. Сумська 25',
+      'Адреса прибуття': 'Praha, Václavské nám. 1',
+      'Кількість місць': '1', 'Вага багажу': '20',
+      'Сума': '3000', 'Валюта': 'CZK', 'Завдаток': '1000', 'Борг': '2000',
+      'Статус оплати': 'Частково', 'Статус ліда': 'В роботі', 'Статус CRM': 'Активний',
+      'Номер авто': '', 'RTE_ID': '', 'Примітка': '1 місце + багаж'
+    },
+    {
+      'PAX_ID': 'PAX_003', 'Напрям': 'ЄВ→УК',
+      'Піб пасажира': 'Müller Friedrich',
+      'Телефон пасажира': '+4917600112233',
+      'Адреса відправки': 'Frankfurt, Zeil 15',
+      'Адреса прибуття': 'м. Одеса',
+      'Кількість місць': '1', 'Вага багажу': '30',
+      'Сума': '55', 'Валюта': 'EUR', 'Завдаток': '55', 'Борг': '0',
+      'Статус оплати': 'Оплачено', 'Статус ліда': 'Підтверджено', 'Статус CRM': 'Активний',
+      'Номер авто': 'BC 4567 DE', 'RTE_ID': 'RTE_002', 'Примітка': '1 місце'
+    },
+    {
+      'PAX_ID': 'PAX_004', 'Напрям': 'УК→ЄВ',
+      'Піб пасажира': 'Ткаченко Марина Василівна',
+      'Телефон пасажира': '+380501234567',
+      'Адреса відправки': 'м. Вінниця, вул. Соборна 10',
+      'Адреса прибуття': 'Berlin, Kurfürstendamm 5',
+      'Кількість місць': '1', 'Вага багажу': '15',
+      'Сума': '1800', 'Валюта': 'UAH', 'Завдаток': '0', 'Борг': '1800',
+      'Статус оплати': 'Не оплачено', 'Статус ліда': 'Новий', 'Статус CRM': 'Активний',
+      'Номер авто': '', 'RTE_ID': '', 'Примітка': ''
+    },
+    {
+      'PAX_ID': 'PAX_005', 'Напрям': 'ЄВ→УК',
+      'Піб пасажира': 'Kowalski Jan',
+      'Телефон пасажира': '+48501234567',
+      'Адреса відправки': 'Kraków, Rynek Główny 1',
+      'Адреса прибуття': 'м. Львів, вул. Городоцька 50',
+      'Кількість місць': '2', 'Вага багажу': '40',
+      'Сума': '200', 'Валюта': 'PLN', 'Завдаток': '100', 'Борг': '100',
+      'Статус оплати': 'Частково', 'Статус ліда': 'В роботі', 'Статус CRM': 'Активний',
+      'Номер авто': '', 'RTE_ID': '', 'Примітка': '2 великі валізи'
+    },
+    {
+      'PAX_ID': 'PAX_006', 'Напрям': 'УК→ЄВ',
+      'Піб пасажира': 'Кравченко Олег Дмитрович',
+      'Телефон пасажира': '+380671112233',
+      'Адреса відправки': 'м. Запоріжжя, пр. Соборний 100',
+      'Адреса прибуття': 'München, Hauptbahnhof',
+      'Кількість місць': '1', 'Вага багажу': '10',
+      'Сума': '2200', 'Валюта': 'UAH', 'Завдаток': '2200', 'Борг': '0',
+      'Статус оплати': 'Оплачено', 'Статус ліда': 'Відмова', 'Статус CRM': 'Активний',
+      'Номер авто': '', 'RTE_ID': '', 'Примітка': 'Скасував поїздку'
+    }
+  ];
+
+  switch (action) {
+    case 'getPassengers':
+      return { ok: true, data: MOCK_PASSENGERS.map(gasToFrontend), count: MOCK_PASSENGERS.length };
+    case 'getPassengerStats':
+      return { ok: true, stats: { total: 6, ue: 4, eu: 2, byStatus: { 'Новий': 1, 'В роботі': 2, 'Підтверджено': 2, 'Відмова': 1 }, byPay: { 'Оплачено': 3, 'Частково': 2, 'Не оплачено': 1 }, totalDebt: 3900, totalSeats: 8 } };
+    case 'addPassenger':
+      return { ok: true, pax_id: 'PAX_NEW_' + Date.now() };
+    case 'updatePassengerField':
+      return { ok: true };
+    case 'deletePassenger':
+      return { ok: true };
+    default:
+      return { ok: true, data: [] };
+  }
+}
 
 const MOCK_ROUTES = [
   { sheetName: 'Маршрут_Цюріх', rowCount: 5, paxCount: 2, parcelCount: 3, rows: null },
@@ -942,12 +868,10 @@ const MOCK_ROUTES = [
 ];
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', function() {
-  allData = MOCK_DATA;
+document.addEventListener('DOMContentLoaded', async function() {
+  await loadData();
   routes = MOCK_ROUTES;
-  renderCards();
   renderRouteSidebar();
-  updateCounters();
 });
 
 // ===== FILTERING =====
@@ -959,13 +883,6 @@ function filterData() {
     data = data.filter(p => p['Напрям'] === 'УК→ЄВ');
   } else {
     data = data.filter(p => p['Напрям'] === 'ЄВ→УК');
-  }
-
-  // View filter (parcels vs passengers)
-  if (currentView === 'passengers') {
-    data = data.filter(p => (p['Тип запису'] || '').includes('Пасажир'));
-  } else if (currentView === 'parcels') {
-    data = data.filter(p => (p['Тип запису'] || '') === 'Посилка');
   }
 
   // Status filter
@@ -983,11 +900,10 @@ function filterData() {
     const q = searchQuery.toLowerCase();
     data = data.filter(p =>
       (p['Піб відправника'] || '').toLowerCase().includes(q) ||
-      (p['Піб отримувача'] || '').toLowerCase().includes(q) ||
       (p['Телефон реєстратора'] || '').includes(q) ||
-      (p['Телефон отримувача'] || '').includes(q) ||
       (p['PKG_ID'] || '').toLowerCase().includes(q) ||
-      (p['Номер ТТН'] || '').includes(q)
+      (p['Адреса відправки'] || '').toLowerCase().includes(q) ||
+      (p['Адреса в Європі'] || '').toLowerCase().includes(q)
     );
   }
 
@@ -1150,9 +1066,6 @@ function toggleSelect(pkgId) {
 
 function setDirection(dir) {
   currentDirection = dir;
-  // Update tabs
-  document.getElementById('tabUe').className = 'dir-tab' + (dir === 'ue' ? ' active-ue' : '');
-  document.getElementById('tabEu').className = 'dir-tab' + (dir === 'eu' ? ' active-eu' : '');
   // Update sidebar items
   document.querySelectorAll('[data-dir]').forEach(el => {
     el.className = 'sidebar-item' + (el.dataset.dir === dir ? (dir === 'ue' ? ' active-ue' : ' active-eu') : '');
@@ -1269,24 +1182,75 @@ function startEdit(btn, pkgId, col) {
   span.appendChild(input);
   input.focus();
 }
-function saveEdit(pkgId, col, value, span) {
+async function saveEdit(pkgId, col, value, span) {
   // Update local data
   const item = allData.find(p => p['PKG_ID'] === pkgId);
   if (item) item[col] = value;
   span.innerHTML = `${value || '—'} <button class="edit-btn" onclick="event.stopPropagation(); startEdit(this, '${pkgId}', '${col}')">✏️</button>`;
+
+  // Send to GAS
+  const res = await apiPost('updatePassengerField', { pax_id: pkgId, col, value });
+  if (res.ok) showToast('Збережено', 'success');
 }
-function openMessenger(phone) { alert('Оберіть месенджер:\n• Viber\n• Telegram\n• WhatsApp'); }
+
+function openMessenger(phone) {
+  const clean = phone.replace(/[^+\d]/g, '');
+  const menu = document.createElement('div');
+  menu.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+  menu.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:20px;min-width:250px;text-align:center;">
+      <div style="font-weight:700;margin-bottom:12px;">Написати ${phone}</div>
+      <a href="viber://chat?number=${clean}" style="display:block;padding:10px;margin:4px 0;background:#7360f2;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Viber</a>
+      <a href="https://t.me/${clean}" style="display:block;padding:10px;margin:4px 0;background:#0088cc;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Telegram</a>
+      <a href="https://wa.me/${clean.replace('+','')}" style="display:block;padding:10px;margin:4px 0;background:#25d366;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">WhatsApp</a>
+      <button onclick="this.closest('div').parentElement.remove()" style="margin-top:10px;padding:8px 20px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;">Скасувати</button>
+    </div>
+  `;
+  document.body.appendChild(menu);
+  menu.addEventListener('click', e => { if (e.target === menu) menu.remove(); });
+}
+
 function openRouteModal(pkgId) { alert('Вибір маршруту для ' + pkgId); }
-function deleteRecord(pkgId) {
-  if (confirm('Видалити запис ' + pkgId + '?')) {
-    const item = allData.find(p => p['PKG_ID'] === pkgId);
-    if (item) item['Статус CRM'] = 'Архів';
-    renderCards();
-  }
+
+async function deleteRecord(pkgId) {
+  if (!confirm('Видалити запис ' + pkgId + '?')) return;
+
+  const item = allData.find(p => p['PKG_ID'] === pkgId);
+  if (item) item['Статус CRM'] = 'Архів';
+  renderCards();
+
+  const res = await apiPost('deletePassenger', { pax_id: pkgId });
+  if (res.ok) showToast('Запис архівовано', 'success');
 }
+
 function createRoute() { alert('Створення нового маршруту'); }
-function openAddForm() { alert('Форма додавання нового запису'); }
-function loadData() { renderCards(); }
+function openAddForm() { alert('Форма додавання нового запису — буде в наступному кроці'); }
+
+async function loadData() {
+  if (isLoading) return;
+  isLoading = true;
+  document.getElementById('cardsList').innerHTML = '<div class="empty-state">⏳ Завантаження...</div>';
+
+  const [paxRes, statsRes] = await Promise.all([
+    apiPost('getPassengers', { direction: 'all', filter: {} }),
+    apiPost('getPassengerStats', {})
+  ]);
+
+  if (paxRes.ok) {
+    allData = paxRes.data || [];
+    // Ensure all records have type
+    allData.forEach(p => { if (!p['Тип запису']) p['Тип запису'] = 'Пасажир'; });
+  }
+
+  if (statsRes.ok) {
+    stats = statsRes.stats || {};
+  }
+
+  isLoading = false;
+  renderCards();
+  updateCounters();
+  showToast('Дані оновлено (' + allData.length + ' пасажирів)', 'success');
+}
 </script>
 </body>
 </html>
