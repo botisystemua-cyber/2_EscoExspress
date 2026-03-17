@@ -648,29 +648,6 @@ body {
 
   <!-- MAIN CONTENT -->
   <main class="main-content">
-    <!-- Direction Tabs -->
-    <div class="dir-tabs">
-      <button class="dir-tab active-ue" id="tabUe" onclick="setDirection('ue')">🇺🇦 УК → Європа</button>
-      <button class="dir-tab" id="tabEu" onclick="setDirection('eu')">🇪🇺 Європа → УК</button>
-    </div>
-
-    <!-- Filter Chips -->
-    <div class="filter-bar" id="filterBar">
-      <button class="filter-chip active" data-status="all" onclick="setStatusFilter('all')">Всі</button>
-      <button class="filter-chip" data-status="Новий" onclick="setStatusFilter('Новий')">🟡 Новий</button>
-      <button class="filter-chip" data-status="В роботі" onclick="setStatusFilter('В роботі')">🔵 В роботі</button>
-      <button class="filter-chip" data-status="Підтверджено" onclick="setStatusFilter('Підтверджено')">🟢 Підтверджено</button>
-      <button class="filter-chip" data-status="Відмова" onclick="setStatusFilter('Відмова')">🔴 Відмова</button>
-    </div>
-
-    <!-- Payment Filter -->
-    <div class="filter-bar" id="payFilterBar">
-      <button class="filter-chip active" data-pay="all" onclick="setPayFilter('all')">Оплата: Всі</button>
-      <button class="filter-chip" data-pay="Оплачено" onclick="setPayFilter('Оплачено')">💚 Оплачено</button>
-      <button class="filter-chip" data-pay="Частково" onclick="setPayFilter('Частково')">💛 Частково</button>
-      <button class="filter-chip" data-pay="Не оплачено" onclick="setPayFilter('Не оплачено')">❤️ Не оплачено</button>
-    </div>
-
     <!-- Cards List -->
     <div class="cards-list" id="cardsList">
       <!-- Filled by JS -->
