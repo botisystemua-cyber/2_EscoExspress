@@ -1391,6 +1391,13 @@ async function loadData() {
     if (dataRes.ok) {
       allData = dataRes.data || [];
       allData.forEach(p => { if (!p['Тип запису']) p['Тип запису'] = 'Посилка'; });
+      // DEBUG: показати ключі першого запису
+      if (allData.length > 0) {
+        console.log('=== DEBUG: Ключі першого запису ===');
+        console.log(JSON.stringify(Object.keys(allData[0])));
+        console.log('=== DEBUG: Перший запис ===');
+        console.log(JSON.stringify(allData[0], null, 2));
+      }
     }
 
     if (statsRes.ok) {
