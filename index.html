@@ -679,6 +679,49 @@ body {
 <!-- ===== FAB ===== -->
 <button class="fab" onclick="openAddForm()">+</button>
 
+<!-- ===== FULLSCREEN LOADER ===== -->
+<div id="fullscreenLoader" class="loader-overlay">
+  <div class="loader-box">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Завантаження...</div>
+  </div>
+</div>
+
+<style>
+.loader-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(13, 31, 60, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.4s;
+}
+.loader-overlay.hidden {
+  opacity: 0; pointer-events: none;
+}
+.loader-box {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  background: #fff; border-radius: 20px; padding: 40px 50px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.loader-spinner {
+  width: 56px; height: 56px;
+  border: 5px solid #e2e8f0;
+  border-top: 5px solid var(--accent, #d90d0d);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.loader-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px; font-weight: 600;
+  color: var(--primary, #1a3a5e);
+  letter-spacing: 0.5px;
+}
+</style>
+
 <script>
 // ===== КОНФІГУРАЦІЯ =====
 // GAS Web App URLs
@@ -871,8 +914,6 @@ const MOCK_ROUTES = [
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async function() {
   await loadData();
-  routes = MOCK_ROUTES;
-  renderRouteSidebar();
 });
 
 // ===== FILTERING =====
@@ -1190,7 +1231,7 @@ async function saveEdit(pkgId, col, value, span) {
   span.innerHTML = `${value || '—'} <button class="edit-btn" onclick="event.stopPropagation(); startEdit(this, '${pkgId}', '${col}')">✏️</button>`;
 
   // Send to GAS
-  const res = await apiPost('updatePassengerField', { pax_id: pkgId, col, value });
+  const res = await apiPost('updateField', { pkg_id: pkgId, col, value });
   if (res.ok) showToast('Збережено', 'success');
 }
 
@@ -1220,37 +1261,57 @@ async function deleteRecord(pkgId) {
   if (item) item['Статус CRM'] = 'Архів';
   renderCards();
 
-  const res = await apiPost('deletePassenger', { pax_id: pkgId });
+  const res = await apiPost('deleteParcel', { pkg_id: pkgId });
   if (res.ok) showToast('Запис архівовано', 'success');
 }
 
 function createRoute() { alert('Створення нового маршруту'); }
 function openAddForm() { alert('Форма додавання нового запису — буде в наступному кроці'); }
 
+function showLoader() {
+  const el = document.getElementById('fullscreenLoader');
+  if (el) { el.classList.remove('hidden'); }
+}
+function hideLoader() {
+  const el = document.getElementById('fullscreenLoader');
+  if (el) { el.classList.add('hidden'); }
+}
+
 async function loadData() {
   if (isLoading) return;
   isLoading = true;
-  document.getElementById('cardsList').innerHTML = '<div class="empty-state">⏳ Завантаження...</div>';
+  showLoader();
 
-  const [paxRes, statsRes] = await Promise.all([
-    apiPost('getPassengers', { direction: 'all', filter: {} }),
-    apiPost('getPassengerStats', {})
-  ]);
+  try {
+    const [dataRes, statsRes, routesRes] = await Promise.all([
+      apiPost('getAll', { sheet: 'all', filter: {} }),
+      apiPost('getStats', {}),
+      apiPost('getRoutesList', {})
+    ]);
 
-  if (paxRes.ok) {
-    allData = paxRes.data || [];
-    // Ensure all records have type
-    allData.forEach(p => { if (!p['Тип запису']) p['Тип запису'] = 'Пасажир'; });
-  }
+    if (dataRes.ok) {
+      allData = dataRes.data || [];
+      allData.forEach(p => { if (!p['Тип запису']) p['Тип запису'] = 'Посилка'; });
+    }
 
-  if (statsRes.ok) {
-    stats = statsRes.stats || {};
+    if (statsRes.ok) {
+      stats = statsRes.stats || {};
+    }
+
+    if (routesRes.ok && routesRes.data) {
+      routes = routesRes.data;
+      renderRouteSidebar();
+    }
+
+    renderCards();
+    updateCounters();
+    showToast('Дані оновлено (' + allData.length + ' посилок)', 'success');
+  } catch (err) {
+    showToast('Помилка завантаження: ' + err.message, 'error');
   }
 
   isLoading = false;
-  renderCards();
-  updateCounters();
-  showToast('Дані оновлено (' + allData.length + ' пасажирів)', 'success');
+  hideLoader();
 }
 </script>
 </body>
