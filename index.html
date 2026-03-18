@@ -1020,16 +1020,24 @@ function filterData() {
 
 // ===== RENDER CARDS =====
 function renderCards() {
-  const data = filterData();
-  const container = document.getElementById('cardsList');
+  try {
+    const data = filterData();
+    const container = document.getElementById('cardsList');
+    if (!container) { console.error('cardsList not found'); return; }
 
-  if (data.length === 0) {
-    container.innerHTML = '<div class="empty-state">📭 Записів не знайдено</div>';
-    return;
+    if (data.length === 0) {
+      container.innerHTML = '<div class="empty-state">📭 Записів не знайдено</div>';
+      return;
+    }
+
+    container.innerHTML = data.map(p => {
+      try { return renderCard(p); }
+      catch(e) { console.error('renderCard error for', p['PKG_ID'], e); return ''; }
+    }).join('');
+    updateCounters();
+  } catch(e) {
+    console.error('renderCards error:', e);
   }
-
-  container.innerHTML = data.map(p => renderCard(p)).join('');
-  updateCounters();
 }
 
 // ===== DETAIL BLOCK RENDERER =====
@@ -1053,7 +1061,7 @@ function renderDetailBlock(label, value, pkgId, opts = {}) {
 }
 
 function renderDetailGrid(fields, pkgId, opts = {}) {
-  return `<div class="details-grid">${fields.map(([l, v, o]) => renderDetailBlock(l, v, pkgId, {...opts, ...o})).join('')}</div>`;
+  return `<div class="details-grid">${fields.map(f => renderDetailBlock(f[0], f[1], pkgId, Object.assign({}, opts, f[2] || {}))).join('')}</div>`;
 }
 
 // ===== RENDER CARD =====
@@ -1411,18 +1419,20 @@ function selectRoute(idx) {
 
 // ===== COUNTERS =====
 function updateCounters() {
-  const active = allData.filter(p => p['Статус CRM'] !== 'Архів');
-  const ue = active.filter(p => p['Напрям'] === 'УК→ЄВ');
-  const eu = active.filter(p => p['Напрям'] === 'ЄВ→УК');
-
-  document.getElementById('countUe').textContent = ue.length;
-  document.getElementById('countEu').textContent = eu.length;
-  document.getElementById('mobCountUe').textContent = ue.length;
-  document.getElementById('mobCountEu').textContent = eu.length;
-  document.getElementById('countAll').textContent = active.length;
-  document.getElementById('countChecking').textContent = active.filter(p => p['Контроль перевірки'] === 'В перевірці').length;
-  document.getElementById('countReady').textContent = active.filter(p => p['Контроль перевірки'] === 'Готова до маршруту').length;
-  document.getElementById('countUnknown').textContent = active.filter(p => p['Статус ліда'] === 'Невідомий').length;
+  try {
+    const active = allData.filter(p => p['Статус CRM'] !== 'Архів');
+    const ue = active.filter(p => p['Напрям'] === 'УК→ЄВ');
+    const eu = active.filter(p => p['Напрям'] === 'ЄВ→УК');
+    const setCount = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setCount('countUe', ue.length);
+    setCount('countEu', eu.length);
+    setCount('mobCountUe', ue.length);
+    setCount('mobCountEu', eu.length);
+    setCount('countAll', active.length);
+    setCount('countChecking', active.filter(p => p['Контроль перевірки'] === 'В перевірці').length);
+    setCount('countReady', active.filter(p => p['Контроль перевірки'] === 'Готова до маршруту').length);
+    setCount('countUnknown', active.filter(p => p['Статус ліда'] === 'Невідомий').length);
+  } catch(e) { console.error('updateCounters error:', e); }
 }
 
 // ===== PLACEHOLDER FUNCTIONS =====
@@ -1513,11 +1523,12 @@ async function loadData() {
     updateCounters();
     showToast('Дані оновлено (' + allData.length + ' посилок)', 'success');
   } catch (err) {
+    console.error('loadData error:', err);
     showToast('Помилка завантаження: ' + err.message, 'error');
+  } finally {
+    isLoading = false;
+    hideLoader();
   }
-
-  isLoading = false;
-  hideLoader();
 }
 </script>
 </body>
