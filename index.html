@@ -118,6 +118,7 @@ body {
 .app-layout {
   display: flex;
   min-height: calc(100vh - 52px);
+  transition: margin-left 0.3s;
 }
 
 /* ===== SIDEBAR (Desktop) ===== */
@@ -609,6 +610,156 @@ body {
   display: none;
 }
 
+/* ===== BULK ACTION MENU ===== */
+.bulk-menu {
+  position: fixed;
+  z-index: 350;
+  background: #1e293b;
+  color: #fff;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  font-size: 12px;
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s;
+}
+.bulk-menu.visible { display: flex; }
+
+/* Desktop: fixed left panel */
+@media (min-width: 901px) {
+  .bulk-menu {
+    top: 52px;
+    left: 0;
+    width: 250px;
+    height: calc(100vh - 52px);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    overflow-y: auto;
+  }
+}
+
+/* Mobile: bottom panel above nav */
+@media (max-width: 900px) {
+  .bulk-menu {
+    bottom: 52px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    width: 95vw;
+    max-width: 420px;
+    max-height: 55vh;
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+  }
+  .bulk-menu.visible { transform: translateX(-50%) translateY(0); }
+}
+
+.bulk-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  position: sticky;
+  top: 0;
+  background: #1e293b;
+  z-index: 1;
+}
+.bulk-menu-header .bulk-count {
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+}
+.bulk-menu-header .bulk-count span {
+  color: var(--accent);
+  font-size: 16px;
+}
+.bulk-menu-close {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.bulk-menu-close:hover { background: rgba(255,255,255,0.2); }
+
+.bulk-segment {
+  padding: 6px 12px;
+}
+.bulk-segment-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 8px 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bulk-segment-title.seg-general { color: #94a3b8; }
+.bulk-segment-title.seg-verify  { color: #fbbf24; }
+.bulk-segment-title.seg-route   { color: #a78bfa; }
+
+.bulk-segment-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.25;
+}
+
+.bulk-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 2px 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #e2e8f0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.bulk-btn:hover {
+  background: rgba(255,255,255,0.12);
+  transform: translateX(2px);
+}
+.bulk-btn:active {
+  background: rgba(255,255,255,0.18);
+  transform: scale(0.98);
+}
+.bulk-btn .bulk-icon {
+  font-size: 15px;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.bulk-btn.btn-danger-bulk { color: #fca5a5; }
+.bulk-btn.btn-danger-bulk:hover { background: rgba(239,68,68,0.15); }
+.bulk-btn.btn-warn-bulk { color: #fde68a; }
+.bulk-btn.btn-warn-bulk:hover { background: rgba(245,158,11,0.15); }
+.bulk-btn.btn-success-bulk { color: #86efac; }
+.bulk-btn.btn-success-bulk:hover { background: rgba(16,185,129,0.15); }
+.bulk-btn.btn-purple-bulk { color: #c4b5fd; }
+.bulk-btn.btn-purple-bulk:hover { background: rgba(139,92,246,0.15); }
+
+/* Selected card highlight */
+.lead-card.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: #fff5f5;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .sidebar { display: none; }
@@ -657,6 +808,56 @@ body {
   <div class="mob-item" onclick="setFilter('checking')">В перевірці</div>
   <div class="mob-item" onclick="setFilter('ready')">Готові</div>
 </nav>
+
+<!-- ===== BULK ACTION MENU ===== -->
+<div class="bulk-menu" id="bulkMenu">
+  <div class="bulk-menu-header">
+    <div class="bulk-count">Виділено: <span id="bulkCount">0</span> посилок</div>
+    <button class="bulk-menu-close" onclick="clearSelection()" title="Зняти виділення">✕</button>
+  </div>
+
+  <!-- Segment 1: General -->
+  <div class="bulk-segment">
+    <div class="bulk-segment-title seg-general">Загальні дії</div>
+    <button class="bulk-btn" onclick="bulkSelectAll()">
+      <span class="bulk-icon">☑</span> Виділити всі
+    </button>
+    <button class="bulk-btn btn-danger-bulk" onclick="bulkDelete()">
+      <span class="bulk-icon">🗑</span> Видалити
+    </button>
+    <button class="bulk-btn btn-warn-bulk" onclick="bulkArchive()">
+      <span class="bulk-icon">📦</span> Архівувати
+    </button>
+  </div>
+
+  <!-- Segment 2: Verification -->
+  <div class="bulk-segment">
+    <div class="bulk-segment-title seg-verify">Перевірка</div>
+    <button class="bulk-btn" onclick="bulkSetVerifyStatus('В перевірці')">
+      <span class="bulk-icon">🔍</span> В перевірку
+    </button>
+    <button class="bulk-btn btn-success-bulk" onclick="bulkSetVerifyStatus('Готова до маршруту')">
+      <span class="bulk-icon">✅</span> В готові
+    </button>
+    <button class="bulk-btn btn-danger-bulk" onclick="bulkSetVerifyStatus('Невідомий')">
+      <span class="bulk-icon">❓</span> Невідомі
+    </button>
+  </div>
+
+  <!-- Segment 3: Route -->
+  <div class="bulk-segment">
+    <div class="bulk-segment-title seg-route">Маршрут</div>
+    <button class="bulk-btn btn-purple-bulk" onclick="bulkAddToRoute()">
+      <span class="bulk-icon">🚚</span> В маршрут
+    </button>
+    <button class="bulk-btn btn-danger-bulk" onclick="bulkRemoveFromRoute()">
+      <span class="bulk-icon">❌</span> Видалити з маршруту
+    </button>
+    <button class="bulk-btn btn-warn-bulk" onclick="bulkOptimizeRoute()">
+      <span class="bulk-icon">⚡</span> Оптимізація
+    </button>
+  </div>
+</div>
 
 <!-- ===== APP LAYOUT ===== -->
 <div class="app-layout">
@@ -1336,6 +1537,111 @@ function restoreBlock(el, value, pkgId, col) {
 function toggleSelect(pkgId) {
   if (selectedIds.has(pkgId)) selectedIds.delete(pkgId);
   else selectedIds.add(pkgId);
+  updateBulkMenu();
+  // Highlight selected card
+  const card = document.querySelector(`.lead-card[data-id="${pkgId}"]`);
+  if (card) card.classList.toggle('selected', selectedIds.has(pkgId));
+}
+
+// ===== BULK ACTION MENU =====
+function updateBulkMenu() {
+  const menu = document.getElementById('bulkMenu');
+  const countEl = document.getElementById('bulkCount');
+  if (!menu || !countEl) return;
+  const n = selectedIds.size;
+  countEl.textContent = n;
+  const appLayout = document.querySelector('.app-layout');
+  if (n > 0) {
+    menu.classList.add('visible');
+    if (window.innerWidth > 900 && appLayout) appLayout.style.marginLeft = '250px';
+  } else {
+    menu.classList.remove('visible');
+    if (appLayout) appLayout.style.marginLeft = '';
+  }
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.lead-card.selected').forEach(el => el.classList.remove('selected'));
+  updateBulkMenu();
+}
+
+function bulkSelectAll() {
+  const visible = filterData();
+  if (selectedIds.size === visible.length) {
+    // Deselect all if all are selected
+    clearSelection();
+    return;
+  }
+  visible.forEach(p => selectedIds.add(p['PKG_ID']));
+  document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = true);
+  document.querySelectorAll('.lead-card').forEach(el => el.classList.add('selected'));
+  updateBulkMenu();
+}
+
+function getSelectedIds() {
+  return Array.from(selectedIds);
+}
+
+function afterBulkAction() {
+  clearSelection();
+  renderCards();
+}
+
+// Stub: Видалити
+function bulkDelete() {
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  if (!confirm(`Видалити ${ids.length} посилок? Цю дію неможливо скасувати.`)) return;
+  console.log('bulkDelete:', ids);
+  showToast(`Видалення ${ids.length} посилок (заглушка)`, 'info');
+  afterBulkAction();
+}
+
+// Stub: Архівувати
+function bulkArchive() {
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  if (!confirm(`Архівувати ${ids.length} посилок?`)) return;
+  console.log('bulkArchive:', ids);
+  showToast(`Архівування ${ids.length} посилок (заглушка)`, 'info');
+  afterBulkAction();
+}
+
+// Stub: Змінити статус перевірки
+function bulkSetVerifyStatus(status) {
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  console.log('bulkSetVerifyStatus:', status, ids);
+  showToast(`${ids.length} посилок → "${status}" (заглушка)`, 'info');
+  afterBulkAction();
+}
+
+// Stub: В маршрут
+function bulkAddToRoute() {
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  console.log('bulkAddToRoute:', ids);
+  showToast(`В маршрут: ${ids.length} посилок (заглушка)`, 'info');
+  // Не скидаємо виділення — тут буде вибір рейсу
+}
+
+// Stub: Видалити з маршруту
+function bulkRemoveFromRoute() {
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  console.log('bulkRemoveFromRoute:', ids);
+  showToast(`Видалено з маршруту: ${ids.length} (заглушка)`, 'info');
+  afterBulkAction();
+}
+
+// Stub: Оптимізація
+function bulkOptimizeRoute() {
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  console.log('bulkOptimizeRoute:', ids);
+  showToast(`Оптимізація маршруту: ${ids.length} посилок (заглушка)`, 'info');
 }
 
 function setDirection(dir) {
