@@ -1382,15 +1382,10 @@ body {
       <button style="width:100%;padding:8px;margin-top:4px;border:2px dashed var(--border);border-radius:8px;background:none;color:var(--info);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;" onclick="createRoute()">+ Новий маршрут</button>
     </div>
 
-    <!-- Archive Section -->
+    <!-- Archive Toggle -->
     <div class="sidebar-section">
-      <div class="sidebar-section-header" onclick="toggleSection(this)">
-        🗄️ Архів <span class="toggle">▶</span>
-      </div>
-      <div class="sidebar-section-body" style="display:none;">
-        <div class="sidebar-item" onclick="toggleArchiveView()">
-          <span id="archiveToggleLabel">Показати архів</span> <span class="badge-count" id="countArchive">0</span>
-        </div>
+      <div class="sidebar-item" id="archiveToggleBtn" onclick="toggleArchiveView()" style="margin:4px 8px;border-radius:8px;text-align:center;font-weight:600;cursor:pointer;">
+        🗄️ Архів <span class="badge-count" id="countArchive"></span>
       </div>
     </div>
   </aside>
@@ -3095,21 +3090,32 @@ async function deleteRecord(pkgId) {
 // Перемкнути вид Архів / Активні
 async function toggleArchiveView() {
   showArchive = !showArchive;
-  const label = document.getElementById('archiveToggleLabel');
-  if (label) label.textContent = showArchive ? 'Сховати архів' : 'Показати архів';
+  var btn = document.getElementById('archiveToggleBtn');
+  if (btn) {
+    if (showArchive) {
+      btn.style.background = 'var(--primary)';
+      btn.style.color = '#fff';
+      btn.innerHTML = '🗄️ Архів (активний) <span class="badge-count" id="countArchive" style="background:#fff;color:var(--primary);"></span>';
+    } else {
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.innerHTML = '🗄️ Архів <span class="badge-count" id="countArchive"></span>';
+    }
+  }
 
   if (showArchive) {
     showToast('Завантаження архіву...', 'info');
-    const dir = currentDirection === 'ue' ? 'ue' : 'eu';
-    const res = await apiPost('getArchive', { direction: dir });
+    var dir = currentDirection === 'ue' ? 'ue' : 'eu';
+    var res = await apiPost('getArchive', { direction: dir });
     if (res.ok) {
       archiveData = res.data || [];
-      document.getElementById('countArchive').textContent = archiveData.length;
+      var countEl = document.getElementById('countArchive');
+      if (countEl) countEl.textContent = archiveData.length;
       renderArchiveCards();
     } else {
       showToast('Помилка завантаження архіву', 'error');
       showArchive = false;
-      if (label) label.textContent = 'Показати архів';
+      if (btn) { btn.style.background = ''; btn.style.color = ''; btn.innerHTML = '🗄️ Архів <span class="badge-count" id="countArchive"></span>'; }
     }
   } else {
     archiveData = [];
