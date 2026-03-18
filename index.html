@@ -3133,31 +3133,100 @@ function renderArchiveCards() {
     return;
   }
 
-  container.innerHTML = '<div style="padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:8px;font-size:13px;font-weight:600;color:#92400e;">🗄️ Режим архіву — ' + archiveData.length + ' записів</div>' +
-    archiveData.map(function(p) { return renderArchiveCard(p); }).join('');
+  // Панель масових дій
+  var massBar = '<div style="padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+    '<span style="font-size:13px;font-weight:600;color:#92400e;">🗄️ Архів — ' + archiveData.length + ' записів</span>' +
+    '<label style="margin-left:auto;font-size:12px;cursor:pointer;color:#92400e;">' +
+      '<input type="checkbox" id="archSelectAll" onchange="archiveSelectAll(this.checked)"> Вибрати всі' +
+    '</label>' +
+    '<button onclick="archiveMassRestore()" style="background:var(--success);color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;">♻️ Відновити вибрані</button>' +
+    '<button onclick="archiveMassDelete()" style="background:var(--danger);color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;">🗑️ Видалити назавжди</button>' +
+  '</div>';
+
+  container.innerHTML = massBar + archiveData.map(function(p) { return renderArchiveCard(p); }).join('');
 }
 
-// Одна архівна картка
+// Архівна картка — такий самий вигляд як активна, але з архівними діями
 function renderArchiveCard(p) {
   var pkgId = p['PKG_ID'] || '';
   var name = p['Піб відправника'] || '—';
+  var phone = p['Телефон реєстратора'] || '';
   var receiver = p['Піб отримувача'] || '—';
+  var receiverPhone = p['Телефон отримувача'] || '';
   var direction = p['Напрям'] || '';
   var isUE = direction === 'УК→ЄВ';
   var dirLabel = isUE ? 'УК→ЄВ' : 'ЄВ→УК';
   var dirClass = isUE ? 'dir-badge-ua-eu' : 'dir-badge-eu-ua';
+  var addressTo = p['Адреса в Європі'] || p['Місто Нова Пошта'] || p['Адреса отримувача'] || '';
+  var addressFrom = p['Адреса відправки'] || '';
+  var weight = p['Кг'] || '';
   var price = p['Сума'] || '';
   var currency = p['Валюта оплати'] || '';
+  var ttn = p['Номер ТТН'] || '';
   var dateArchive = p['DATE_ARCHIVE'] || '';
   var reason = p['ARCHIVE_REASON'] || '';
   var archivedBy = p['ARCHIVED_BY'] || '';
+  var dateCreated = p['Дата створення'] || '';
+  var leadStatus = p['Статус ліда'] || '';
+  var payStatus = p['Статус оплати'] || '';
+  var deposit = parseFloat(p['Завдаток']) || 0;
+  var debt = parseFloat(p['Борг']) || 0;
+  var isChecked = archiveSelectedIds.has(pkgId);
+  var isOpen = openCardId === pkgId;
 
-  return '<div class="lead-card" data-id="' + pkgId + '" style="opacity:0.7;border-left:4px solid #94a3b8;">' +
-    '<div class="card-header">' +
+  var ttnHtml = (isUE && ttn) ? '<span class="card-ttn">TTH: ' + ttn + '</span>' : '';
+
+  // Lead badge
+  var leadBadgeMap = { 'Новий': 'badge-new', 'В роботі': 'badge-work', 'Активний': 'badge-work', 'Підтверджено': 'badge-confirmed', 'Зарахований': 'badge-confirmed', 'Відмова': 'badge-refused', 'Невідомий': 'badge-unknown' };
+  var leadBadge = leadStatus ? '<span class="badge ' + (leadBadgeMap[leadStatus] || '') + '">' + leadStatus + '</span>' : '';
+
+  // Pay badge
+  var payBadgeMap = { 'Оплачено': 'badge-paid', 'Частково': 'badge-partial', 'Не оплачено': 'badge-unpaid' };
+  var payBadge = payStatus ? '<span class="badge ' + (payBadgeMap[payStatus] || '') + '">' + payStatus + '</span>' : '';
+  var priceColorClass = payStatus === 'Оплачено' ? 'paid' : (payStatus === 'Частково' ? 'partial' : 'unpaid');
+
+  // Detail tabs (read-only)
+  var tabParcel = renderDetailGrid([
+    ['Опис', p['Опис'] || ''], ['Деталі', p['Деталі'] || ''],
+    ['Кількість позицій', p['Кількість позицій'] || ''], ['Кг', weight],
+    ['Номер ТТН', ttn], ['Внутрішній №', p['Внутрішній №'] || ''],
+    ['Статус посилки', p['Статус посилки'] || ''],
+  ].map(function(f) { return [f[0], f[1], {readonly:true}]; }), pkgId);
+
+  var tabBasic = renderDetailGrid([
+    ['Піб відправника', name], ['Телефон реєстратора', phone],
+    ['Адреса відправки', addressFrom],
+    ['Піб отримувача', receiver], ['Телефон отримувача', receiverPhone],
+    [isUE ? 'Адреса в Європі' : 'Місто Нова Пошта', addressTo],
+    ['Статус ліда', leadStatus], ['Тег', p['Тег'] || ''],
+  ].map(function(f) { return [f[0], f[1], {readonly:true}]; }), pkgId);
+
+  var tabFinance = renderDetailGrid([
+    ['Сума', price], ['Валюта оплати', currency],
+    ['Завдаток', p['Завдаток'] || ''], ['Валюта завдатку', p['Валюта завдатку'] || ''],
+    ['Форма оплати', p['Форма оплати'] || ''], ['Статус оплати', payStatus],
+    ['Борг', debt ? String(debt) : '', {readonly:true}],
+  ].map(function(f) { return [f[0], f[1], f[2] || {readonly:true}]; }), pkgId);
+
+  var tabArchive = renderDetailGrid([
+    ['ARCHIVE_ID', p['ARCHIVE_ID'] || '', {readonly:true}],
+    ['DATE_ARCHIVE', dateArchive, {readonly:true}],
+    ['ARCHIVED_BY', archivedBy, {readonly:true}],
+    ['ARCHIVE_REASON', reason, {readonly:true}],
+    ['SOURCE_SHEET', p['SOURCE_SHEET'] || '', {readonly:true}],
+  ], pkgId);
+
+  return '<div class="lead-card" data-id="' + pkgId + '" style="border-left:4px solid #94a3b8;">' +
+    '<div class="card-header" onclick="toggleCard(\'' + pkgId + '\')">' +
       '<div class="card-top-row">' +
+        '<input type="checkbox" class="card-checkbox" onclick="event.stopPropagation(); archiveToggleSelect(\'' + pkgId + '\')" ' + (isChecked ? 'checked' : '') + '>' +
         '<span class="dir-badge ' + dirClass + '">' + dirLabel + '</span>' +
+        ttnHtml +
+        (weight ? '<span class="badge-weight">⚖️ ' + weight + ' кг</span>' : '') +
         '<div class="card-finance">' +
-          (price ? '<span class="card-price" style="color:#94a3b8;">' + price + ' ' + currency + '</span>' : '') +
+          (price ? '<span class="card-price ' + priceColorClass + '">' + price + ' ' + currency + '</span>' : '') +
+          (deposit > 0 ? '<span class="card-deposit">завд:' + deposit + '</span>' : '') +
+          (debt > 0 ? '<span class="card-debt">борг:' + debt + '</span>' : '') +
         '</div>' +
       '</div>' +
       '<div class="card-row2-wrap">' +
@@ -3165,35 +3234,127 @@ function renderArchiveCard(p) {
           '<span class="card-pkgid">' + pkgId + '</span>' +
           '<span class="card-sender-recv">👤 ' + name + ' → ' + receiver + '</span>' +
           '<span class="badge" style="background:#fee2e2;color:#991b1b;">Архів</span>' +
+          leadBadge + ' ' + payBadge +
         '</div>' +
+        (addressTo ? '<div class="card-address">📍 ' + (addressFrom ? addressFrom + ' → ' : '') + addressTo + '</div>' : '') +
         '<div class="card-meta-tags">' +
-          (dateArchive ? '<span class="meta-tag">📅 ' + dateArchive + '</span>' : '') +
+          (dateCreated ? '<span class="meta-tag">📅 ' + dateCreated + '</span>' : '') +
+          (dateArchive ? '<span class="meta-tag" style="color:#991b1b;">🗄️ ' + dateArchive + '</span>' : '') +
           (reason ? '<span class="meta-tag">📝 ' + reason + '</span>' : '') +
-          (archivedBy ? '<span class="meta-tag">👤 ' + archivedBy + '</span>' : '') +
         '</div>' +
       '</div>' +
     '</div>' +
-    '<div class="card-actions" style="display:flex;padding:8px 12px;gap:8px;">' +
+    '<div class="card-actions" id="actions-' + pkgId + '" style="display:flex;padding:8px 12px;gap:8px;">' +
       '<button onclick="event.stopPropagation(); restoreFromArchive(\'' + pkgId + '\')" style="background:var(--success);color:#fff;">♻️ Відновити</button>' +
+      '<button onclick="event.stopPropagation(); permanentDelete(\'' + pkgId + '\')" class="btn-danger">🗑️ Видалити назавжди</button>' +
+    '</div>' +
+    '<div class="card-details ' + (isOpen ? 'open' : '') + '" id="details-' + pkgId + '">' +
+      '<div class="detail-tabs">' +
+        '<div class="detail-tab active" data-tab="parcel" onclick="event.stopPropagation(); switchTab(\'' + pkgId + '\', \'parcel\')">📦 Посилка</div>' +
+        '<div class="detail-tab" data-tab="basic" onclick="event.stopPropagation(); switchTab(\'' + pkgId + '\', \'basic\')">📄 Основне</div>' +
+        '<div class="detail-tab" data-tab="finance" onclick="event.stopPropagation(); switchTab(\'' + pkgId + '\', \'finance\')">💰 Фінанси</div>' +
+        '<div class="detail-tab" data-tab="archive" onclick="event.stopPropagation(); switchTab(\'' + pkgId + '\', \'archive\')">🗄️ Архів</div>' +
+      '</div>' +
+      '<div class="detail-tab-panel active" data-tab-panel="parcel">' + tabParcel + '</div>' +
+      '<div class="detail-tab-panel" data-tab-panel="basic">' + tabBasic + '</div>' +
+      '<div class="detail-tab-panel" data-tab-panel="finance">' + tabFinance + '</div>' +
+      '<div class="detail-tab-panel" data-tab-panel="archive">' + tabArchive + '</div>' +
     '</div>' +
   '</div>';
 }
 
-// Відновити з архіву
+// ===== ARCHIVE SELECTION & MASS ACTIONS =====
+var archiveSelectedIds = new Set();
+
+function archiveToggleSelect(pkgId) {
+  if (archiveSelectedIds.has(pkgId)) archiveSelectedIds.delete(pkgId);
+  else archiveSelectedIds.add(pkgId);
+}
+
+function archiveSelectAll(checked) {
+  archiveSelectedIds.clear();
+  if (checked) {
+    archiveData.forEach(function(p) {
+      if (p['PKG_ID']) archiveSelectedIds.add(p['PKG_ID']);
+    });
+  }
+  renderArchiveCards();
+}
+
+// Відновити з архіву (одну)
 async function restoreFromArchive(pkgId) {
   if (!confirm('Відновити посилку ' + pkgId + ' з архіву?')) return;
-
+  showToast('Відновлення...', 'info');
   const res = await apiPost('restoreFromArchive', { pkg_id: pkgId });
   if (res.ok) {
-    // Видалити з архівних даних
     archiveData = archiveData.filter(function(p) { return p['PKG_ID'] !== pkgId; });
-    document.getElementById('countArchive').textContent = archiveData.length;
+    archiveSelectedIds.delete(pkgId);
+    var countEl = document.getElementById('countArchive');
+    if (countEl) countEl.textContent = archiveData.length;
     renderArchiveCards();
     showToast('Відновлено з архіву', 'success');
-    // Перезавантажити основні дані
-    loadData();
   } else {
-    showToast('Помилка відновлення', 'error');
+    showToast(res.error || 'Помилка відновлення', 'error');
+  }
+}
+
+// Видалити назавжди (одну)
+async function permanentDelete(pkgId) {
+  if (!confirm('ВИДАЛИТИ НАЗАВЖДИ посилку ' + pkgId + '? Це неможливо скасувати!')) return;
+  showToast('Видалення...', 'info');
+  const res = await apiPost('permanentDelete', { pkg_id: pkgId });
+  if (res.ok) {
+    archiveData = archiveData.filter(function(p) { return p['PKG_ID'] !== pkgId; });
+    archiveSelectedIds.delete(pkgId);
+    var countEl = document.getElementById('countArchive');
+    if (countEl) countEl.textContent = archiveData.length;
+    renderArchiveCards();
+    showToast('Видалено назавжди', 'success');
+  } else {
+    showToast(res.error || 'Помилка видалення', 'error');
+  }
+}
+
+// Масове відновлення
+async function archiveMassRestore() {
+  if (archiveSelectedIds.size === 0) { showToast('Виберіть посилки', 'warning'); return; }
+  if (!confirm('Відновити ' + archiveSelectedIds.size + ' посилок з архіву?')) return;
+  showToast('Відновлення ' + archiveSelectedIds.size + ' посилок...', 'info');
+  var ids = Array.from(archiveSelectedIds);
+  var success = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var res = await apiPost('restoreFromArchive', { pkg_id: ids[i] });
+    if (res.ok) success++;
+  }
+  archiveSelectedIds.clear();
+  // Перезавантажити архів
+  var dir = currentDirection === 'ue' ? 'ue' : 'eu';
+  var archRes = await apiPost('getArchive', { direction: dir });
+  if (archRes.ok) {
+    archiveData = archRes.data || [];
+    var countEl = document.getElementById('countArchive');
+    if (countEl) countEl.textContent = archiveData.length;
+  }
+  renderArchiveCards();
+  showToast('Відновлено ' + success + ' з ' + ids.length, 'success');
+}
+
+// Масове видалення назавжди
+async function archiveMassDelete() {
+  if (archiveSelectedIds.size === 0) { showToast('Виберіть посилки', 'warning'); return; }
+  if (!confirm('ВИДАЛИТИ НАЗАВЖДИ ' + archiveSelectedIds.size + ' посилок? Це неможливо скасувати!')) return;
+  showToast('Видалення...', 'info');
+  var ids = Array.from(archiveSelectedIds);
+  var res = await apiPost('permanentDelete', { pkg_ids: ids });
+  if (res.ok) {
+    archiveData = archiveData.filter(function(p) { return !archiveSelectedIds.has(p['PKG_ID']); });
+    archiveSelectedIds.clear();
+    var countEl = document.getElementById('countArchive');
+    if (countEl) countEl.textContent = archiveData.length;
+    renderArchiveCards();
+    showToast('Видалено ' + (res.deleted || ids.length) + ' записів', 'success');
+  } else {
+    showToast(res.error || 'Помилка видалення', 'error');
   }
 }
 

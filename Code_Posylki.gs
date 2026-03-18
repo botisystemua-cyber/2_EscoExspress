@@ -141,6 +141,7 @@ function doPost(e) {
       case 'deleteParcel':            result = apiDeleteParcel(body); break;
       case 'getArchive':              result = apiGetArchive(body); break;
       case 'restoreFromArchive':      result = apiRestoreFromArchive(body); break;
+      case 'permanentDelete':         result = apiPermanentDelete(body); break;
 
       // ── VERIFICATION ──
       case 'scanTTN':                 result = apiScanTTN(body); break;
@@ -715,8 +716,8 @@ function apiCheckDuplicates(params) {
 
 /**
  * apiDeleteParcel — архівація посилки
- * 1. Копіює запис в DB.ARCHIVE "Посилки"
- * 2. Позначає Статус CRM = 'Архів' в джерелі
+ * 1. Копіює ВЕСЬ рядок 1:1 в DB.ARCHIVE "Посилки" + метадані
+ * 2. ВИДАЛЯЄ рядок з основної таблиці
  * params: { pkg_id, reason, archived_by }
  */
 function apiDeleteParcel(params) {
@@ -725,57 +726,42 @@ function apiDeleteParcel(params) {
     return { ok: false, error: 'Посилку не знайдено: ' + params.pkg_id };
   }
 
-  // 1. Зібрати дані посилки
-  var pkgObj = {};
-  for (var i = 0; i < found.headers.length; i++) {
-    pkgObj[found.headers[i]] = found.data[i] !== undefined ? String(found.data[i]) : '';
-  }
-
-  // 2. Записати в архівну таблицю DB.ARCHIVE → "Посилки"
   var archiveId = genId('ARC');
   var dateArchive = now();
   var archivedBy = params.archived_by || 'CRM';
   var reason = params.reason || '';
 
+  // 1. Зібрати повний об'єкт посилки
+  var pkgObj = {};
+  for (var i = 0; i < found.headers.length; i++) {
+    pkgObj[found.headers[i]] = found.data[i] !== undefined ? found.data[i] : '';
+  }
+
+  // Додати архівні метадані
+  pkgObj['ARCHIVE_ID'] = archiveId;
+  pkgObj['DATE_ARCHIVE'] = dateArchive;
+  pkgObj['ARCHIVED_BY'] = archivedBy;
+  pkgObj['ARCHIVE_REASON'] = reason;
+  pkgObj['Статус CRM'] = 'Архів';
+
+  // 2. Записати в DB.ARCHIVE → "Посилки"
+  // Структура архіву: ті самі колонки що й джерело
   try {
     var archiveSheet = getSheetFromDb('ARCHIVE', 'Посилки');
     var archHeaders = normalizeHeaders(archiveSheet.getRange(1, 1, 1, archiveSheet.getLastColumn()).getValues()[0]);
 
-    // Підготувати рядок: маппити поля посилки → колонки архіву
     var archRow = archHeaders.map(function(h) {
-      if (h === 'ARCHIVE_ID') return archiveId;
-      if (h === 'Тип дії') return 'Архів';
-      if (h === 'DATE_ARCHIVE') return dateArchive;
-      if (h === 'ARCHIVED_BY') return archivedBy;
-      if (h === 'ARCHIVE_REASON') return reason;
-      if (h === 'SOURCE_TABLE') return 'Posylki_crm';
-      if (h === 'SOURCE_SHEET') return found.sheetName;
-      // Маппінг: "Адреса отримувача" в архіві ← "Адреса в Європі" або "Місто Нова Пошта"
-      if (h === 'Адреса отримувача') return pkgObj['Адреса в Європі'] || pkgObj['Місто Нова Пошта'] || '';
-      return pkgObj[h] || '';
+      return pkgObj[h] !== undefined ? pkgObj[h] : '';
     });
 
     archiveSheet.appendRow(archRow);
   } catch(e) {
-    // Якщо архівна таблиця недоступна — продовжуємо, не блокуємо
     Logger.log('Archive write error: ' + e.message);
+    return { ok: false, error: 'Помилка запису в архів: ' + e.message };
   }
 
-  // 3. Позначити в джерелі
-  var updates = {
-    'Статус CRM': 'Архів',
-    'DATE_ARCHIVE': dateArchive,
-    'ARCHIVED_BY': archivedBy,
-    'ARCHIVE_REASON': reason,
-    'ARCHIVE_ID': archiveId
-  };
-
-  for (var col in updates) {
-    var idx = found.headers.indexOf(col);
-    if (idx !== -1) {
-      found.sheet.getRange(found.rowNum, idx + 1).setValue(updates[col]);
-    }
-  }
+  // 3. Видалити рядок з основної таблиці
+  found.sheet.deleteRow(found.rowNum);
 
   return { ok: true, pkg_id: params.pkg_id, archive_id: archiveId };
 }
@@ -786,6 +772,7 @@ function apiDeleteParcel(params) {
 
 /**
  * apiGetArchive — отримати архівні посилки з DB.ARCHIVE "Посилки"
+ * Повертає ПОВНІ дані (такі ж як getAll) + архівні метадані
  * params: { direction: 'all'|'ue'|'eu' }
  */
 function apiGetArchive(params) {
@@ -803,7 +790,6 @@ function apiGetArchive(params) {
       var obj = {};
       for (var j = 0; j < headers.length; j++) {
         var val = data[i][j];
-        // Дати конвертувати в рядок
         if (val instanceof Date) {
           obj[headers[j]] = Utilities.formatDate(val, 'Europe/Kiev', 'dd.MM.yyyy HH:mm');
         } else {
@@ -811,74 +797,125 @@ function apiGetArchive(params) {
         }
       }
 
-      // Пропустити порожні
       if (!obj['PKG_ID'] && !obj['Піб відправника']) continue;
 
       // Фільтр за напрямом
       if (direction === 'ue' && obj['Напрям'] !== 'УК→ЄВ') continue;
       if (direction === 'eu' && obj['Напрям'] !== 'ЄВ→УК') continue;
 
+      obj['_sheet'] = obj['SOURCE_SHEET'] || '';
+      obj['_isArchive'] = true;
       result.push(obj);
     }
   } catch(e) {
     return { ok: false, error: 'Помилка читання архіву: ' + e.message };
   }
 
-  // Новіші спочатку
   result.reverse();
-
   return { ok: true, data: result };
 }
 
 /**
  * apiRestoreFromArchive — відновити посилку з архіву
- * 1. Знайти в DB.ARCHIVE "Посилки" за PKG_ID
- * 2. Відновити Статус CRM = 'Активний' в джерелі
- * 3. Видалити рядок з архіву
+ * 1. Читає повний рядок з DB.ARCHIVE "Посилки"
+ * 2. Додає рядок назад в основну таблицю (УК→ЄВ або ЄВ→УК)
+ * 3. Видаляє з архіву
  * params: { pkg_id }
  */
 function apiRestoreFromArchive(params) {
   var pkgId = params.pkg_id;
 
-  // 1. Відновити статус в джерелі (якщо запис ще є)
-  var found = findPkgInBoth(pkgId);
-  if (found) {
-    var clearCols = {
-      'Статус CRM': 'Активний',
-      'DATE_ARCHIVE': '',
-      'ARCHIVED_BY': '',
-      'ARCHIVE_REASON': '',
-      'ARCHIVE_ID': ''
-    };
-    for (var col in clearCols) {
-      var idx = found.headers.indexOf(col);
-      if (idx !== -1) {
-        found.sheet.getRange(found.rowNum, idx + 1).setValue(clearCols[col]);
-      }
-    }
-  }
-
-  // 2. Видалити рядок з архівної таблиці
   try {
     var archiveSheet = getSheetFromDb('ARCHIVE', 'Посилки');
     var archData = archiveSheet.getDataRange().getValues();
     var archHeaders = normalizeHeaders(archData[0]);
     var pkgIdIdx = archHeaders.indexOf('PKG_ID');
 
-    if (pkgIdIdx !== -1) {
-      // Шукаємо з кінця щоб видалити останній (найновіший) запис
-      for (var i = archData.length - 1; i >= 1; i--) {
-        if (String(archData[i][pkgIdIdx]) === pkgId) {
-          archiveSheet.deleteRow(i + 1);
-          break;
-        }
+    if (pkgIdIdx === -1) return { ok: false, error: 'PKG_ID колонка не знайдена в архіві' };
+
+    // Знайти рядок в архіві (з кінця — найновіший)
+    var archRowIdx = -1;
+    var archRowData = null;
+    for (var i = archData.length - 1; i >= 1; i--) {
+      if (String(archData[i][pkgIdIdx]) === pkgId) {
+        archRowIdx = i;
+        archRowData = archData[i];
+        break;
+      }
+    }
+
+    if (archRowIdx === -1) return { ok: false, error: 'Посилку не знайдено в архіві: ' + pkgId };
+
+    // Зібрати об'єкт з архівних даних
+    var archObj = {};
+    for (var j = 0; j < archHeaders.length; j++) {
+      archObj[archHeaders[j]] = archRowData[j] !== undefined ? archRowData[j] : '';
+    }
+
+    // Визначити цільовий аркуш
+    var direction = archObj['Напрям'] || '';
+    var targetSheet, targetCols;
+    if (direction === 'ЄВ→УК') {
+      targetSheet = getEuSheet();
+      targetCols = PKG_EU_COLS;
+    } else {
+      targetSheet = getUeSheet();
+      targetCols = PKG_UE_COLS;
+    }
+
+    // Очистити архівні метадані
+    archObj['Статус CRM'] = 'Активний';
+    archObj['DATE_ARCHIVE'] = '';
+    archObj['ARCHIVED_BY'] = '';
+    archObj['ARCHIVE_REASON'] = '';
+    archObj['ARCHIVE_ID'] = '';
+
+    // Записати рядок в цільову таблицю
+    var targetHeaders = normalizeHeaders(targetSheet.getRange(1, 1, 1, targetSheet.getLastColumn()).getValues()[0]);
+    var newRow = targetHeaders.map(function(h) {
+      return archObj[h] !== undefined ? archObj[h] : '';
+    });
+    targetSheet.appendRow(newRow);
+
+    // Видалити з архіву
+    archiveSheet.deleteRow(archRowIdx + 1);
+
+    return { ok: true, pkg_id: pkgId };
+
+  } catch(e) {
+    return { ok: false, error: 'Помилка відновлення: ' + e.message };
+  }
+}
+
+/**
+ * apiPermanentDelete — видалити назавжди з архіву
+ * params: { pkg_id } або { pkg_ids: [...] } для масового видалення
+ */
+function apiPermanentDelete(params) {
+  var pkgIds = params.pkg_ids || [params.pkg_id];
+  var deleted = 0;
+
+  try {
+    var archiveSheet = getSheetFromDb('ARCHIVE', 'Посилки');
+    var archData = archiveSheet.getDataRange().getValues();
+    var archHeaders = normalizeHeaders(archData[0]);
+    var pkgIdIdx = archHeaders.indexOf('PKG_ID');
+
+    if (pkgIdIdx === -1) return { ok: false, error: 'PKG_ID колонка не знайдена' };
+
+    // Видаляти з кінця щоб не зсувати індекси
+    for (var i = archData.length - 1; i >= 1; i--) {
+      var id = String(archData[i][pkgIdIdx]);
+      if (pkgIds.indexOf(id) !== -1) {
+        archiveSheet.deleteRow(i + 1);
+        deleted++;
       }
     }
   } catch(e) {
-    Logger.log('Archive delete error: ' + e.message);
+    return { ok: false, error: 'Помилка видалення: ' + e.message };
   }
 
-  return { ok: true, pkg_id: pkgId };
+  return { ok: true, deleted: deleted };
 }
 
 // ============================================================
