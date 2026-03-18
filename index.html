@@ -573,14 +573,14 @@ body {
   transform: translateY(-50%) rotate(180deg);
 }
 .inline-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px); left: 0; right: 0;
+  position: fixed;
+  min-width: 200px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0,0,0,0.15);
   max-height: 220px; overflow-y: auto;
-  z-index: 50;
+  z-index: 9000;
   padding: 4px;
   opacity: 0; transform: translateY(-8px) scale(0.97);
   animation: dropdownIn 0.2s ease-out forwards;
@@ -2447,29 +2447,62 @@ function startInlineEdit(el, pkgId, col) {
       menu.appendChild(item);
     });
 
-    dd.appendChild(menu);
     el.appendChild(dd);
+    // Append menu to body so it floats over everything
+    document.body.appendChild(menu);
+
+    // Position menu relative to trigger
+    function positionMenu() {
+      const rect = trigger.getBoundingClientRect();
+      const menuH = Math.min(menu.scrollHeight, 220);
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const spaceAbove = rect.top - 8;
+
+      menu.style.left = rect.left + 'px';
+      menu.style.width = Math.max(rect.width, 200) + 'px';
+
+      if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
+        menu.style.top = (rect.bottom + 4) + 'px';
+        menu.style.bottom = 'auto';
+      } else {
+        menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+        menu.style.top = 'auto';
+      }
+    }
+    positionMenu();
+
+    // Cleanup function to remove floating menu
+    function cleanupMenu() {
+      if (menu.parentNode === document.body) document.body.removeChild(menu);
+      document.removeEventListener('click', closeHandler);
+      document.removeEventListener('keydown', keyHandler);
+      window.removeEventListener('scroll', positionMenu, true);
+    }
 
     // Toggle on trigger click
     trigger.onclick = function(e) {
       e.stopPropagation();
-      dd.classList.toggle('open');
+      const isOpen = dd.classList.toggle('open');
+      menu.style.display = isOpen ? '' : 'none';
+      if (isOpen) positionMenu();
     };
 
     // Close on outside click
     const closeHandler = function(e) {
-      if (!dd.contains(e.target)) {
-        document.removeEventListener('click', closeHandler);
+      if (!dd.contains(e.target) && !menu.contains(e.target)) {
+        cleanupMenu();
         restoreBlock(el, currentVal, pkgId, col);
       }
     };
     setTimeout(() => document.addEventListener('click', closeHandler), 10);
 
+    // Reposition on scroll
+    window.addEventListener('scroll', positionMenu, true);
+
     // Escape key
     const keyHandler = function(e) {
       if (e.key === 'Escape') {
-        document.removeEventListener('keydown', keyHandler);
-        document.removeEventListener('click', closeHandler);
+        cleanupMenu();
         restoreBlock(el, currentVal, pkgId, col);
       }
     };
@@ -2495,6 +2528,8 @@ function startInlineEdit(el, pkgId, col) {
 }
 
 function closeInlineDropdown(el, pkgId, col, value) {
+  // Remove floating menu from body
+  document.querySelectorAll('body > .inline-dropdown-menu').forEach(m => m.remove());
   saveInlineEdit(pkgId, col, value, el);
 }
 
@@ -2514,6 +2549,8 @@ function saveInlineEdit(pkgId, col, value, el) {
 }
 
 function restoreBlock(el, value, pkgId, col) {
+  // Clean up any floating dropdown menus
+  document.querySelectorAll('body > .inline-dropdown-menu').forEach(m => m.remove());
   const v = value ? value.trim() : '';
   el.innerHTML = v
     ? `<span class="val-text">${v}</span>`
