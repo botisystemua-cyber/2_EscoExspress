@@ -2367,9 +2367,8 @@ function switchTab(pkgId, tabName) {
 }
 
 // ===== FIELD OPTIONS (dropdown lists) =====
-const swissPointAddresses = SWISS_POINTS.map(sp => `${sp.city} — ${sp.addr}`);
-
 function getFieldOptions(col) {
+  const swissAddrs = (typeof SWISS_POINTS !== 'undefined') ? SWISS_POINTS.map(sp => `${sp.city} — ${sp.addr}`) : [];
   const opts = {
     'Статус ліда':      ['Новий', 'В роботі', 'Підтверджено', 'Відмова'],
     'Статус оплати':    ['Не оплачено', 'Частково', 'Оплачено'],
@@ -2381,8 +2380,8 @@ function getFieldOptions(col) {
     'Форма НП':         ['Готівка', 'Картка', 'Частково'],
     'Статус НП':        ['Ми оплатили', 'Відправник оплатив', 'Наложний платіж'],
     'Форма оплати':     ['Готівка', 'Картка', 'Частково'],
-    'Адреса відправки': swissPointAddresses,
-    'Адреса в Європі':  swissPointAddresses,
+    'Адреса відправки': swissAddrs,
+    'Адреса в Європі':  swissAddrs,
     'Контроль перевірки': ['', 'В перевірці', 'Готова до маршруту'],
     'Тег':              ['', 'VIP', 'срочна', 'крихке', 'великогабарит'],
   };
