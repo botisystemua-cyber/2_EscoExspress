@@ -390,11 +390,46 @@ body {
 /* Card Details (expandable) */
 .card-details {
   display: none;
-  padding: 10px;
+  padding: 0;
   background: #fafbfc;
   border-top: 1px solid var(--border);
 }
 .card-details.open { display: block; }
+
+/* Detail Sections (collapsible groups) */
+.detail-section {
+  border-bottom: 1px solid var(--border);
+}
+.detail-section:last-of-type { border-bottom: none; }
+.detail-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f0f4f8;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  user-select: none;
+  transition: background 0.15s;
+}
+.detail-section-header:hover { background: #e2e8f0; }
+.detail-section-header .section-icon { font-size: 13px; }
+.detail-section-header .section-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+.detail-section.open .section-arrow { transform: rotate(180deg); }
+.detail-section-body {
+  display: none;
+  padding: 10px 12px;
+}
+.detail-section.open .detail-section-body { display: block; }
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -967,12 +1002,37 @@ function renderCards() {
   updateCounters();
 }
 
+function renderDetailSection(icon, title, fields, pkgId, startOpen) {
+  const html = fields.filter(([,v]) => v && v !== '—' && v !== '0' && v !== ' ').map(([label, value]) => `
+    <div class="detail-field">
+      <span class="detail-label">${label}</span>
+      <span class="detail-value" data-pkg="${pkgId}" data-col="${label}">
+        ${value || '—'}
+        <button class="edit-btn" onclick="event.stopPropagation(); startEdit(this, '${pkgId}', '${label}')">✏️</button>
+      </span>
+    </div>
+  `).join('');
+  if (!html.trim()) return '';
+  return `
+    <div class="detail-section ${startOpen ? 'open' : ''}" onclick="event.stopPropagation(); this.classList.toggle('open')">
+      <div class="detail-section-header">
+        <span class="section-icon">${icon}</span> ${title}
+        <span class="section-arrow">▼</span>
+      </div>
+      <div class="detail-section-body" onclick="event.stopPropagation()">
+        <div class="details-grid">${html}</div>
+      </div>
+    </div>
+  `;
+}
+
 function renderCard(p) {
   const pkgId = p['PKG_ID'] || '';
   const isPax = (p['Тип запису'] || '').includes('Пасажир');
   const name = p['Піб відправника'] || '—';
   const phone = p['Телефон реєстратора'] || '—';
   const receiver = p['Піб отримувача'] || '';
+  const receiverPhone = p['Телефон отримувача'] || '';
   const direction = p['Напрям'] || '';
   const dirClass = direction === 'УК→ЄВ' ? 'ue' : 'eu';
   const dirLabel = direction === 'УК→ЄВ' ? 'УК→ЄВ' : 'ЄВ→УК';
@@ -988,22 +1048,26 @@ function renderCard(p) {
   const ttn = p['Номер ТТН'] || '';
   const auto = p['Номер авто'] || '';
   const note = p['Примітка'] || '';
-  const seats = p['Місця'] || '';
+  const dateCreated = p['Дата створення'] || '';
+  const controlCheck = p['Контроль перевірки'] || '';
+  const statusPkg = p['Статус посилки'] || '';
+  const statusCrm = p['Статус CRM'] || '';
   const isOpen = openCardId === pkgId;
 
   // Status class
   let statusClass = '';
   if (leadStatus === 'Новий') statusClass = 'status-new';
-  else if (leadStatus === 'В роботі') statusClass = 'status-work';
-  else if (leadStatus === 'Підтверджено') statusClass = 'status-confirmed';
+  else if (leadStatus === 'В роботі' || leadStatus === 'Активний') statusClass = 'status-work';
+  else if (leadStatus === 'Підтверджено' || leadStatus === 'Зарахований') statusClass = 'status-confirmed';
   else if (leadStatus === 'Відмова') statusClass = 'status-refused';
 
   // Lead status badge
   let leadBadge = '';
   if (leadStatus === 'Новий') leadBadge = '<span class="badge badge-new">Новий</span>';
-  else if (leadStatus === 'В роботі') leadBadge = '<span class="badge badge-work">В роботі</span>';
-  else if (leadStatus === 'Підтверджено') leadBadge = '<span class="badge badge-confirmed">Підтверджено</span>';
+  else if (leadStatus === 'В роботі' || leadStatus === 'Активний') leadBadge = '<span class="badge badge-work">' + leadStatus + '</span>';
+  else if (leadStatus === 'Підтверджено' || leadStatus === 'Зарахований') leadBadge = '<span class="badge badge-confirmed">' + leadStatus + '</span>';
   else if (leadStatus === 'Відмова') leadBadge = '<span class="badge badge-refused">Відмова</span>';
+  else if (leadStatus) leadBadge = '<span class="badge">' + leadStatus + '</span>';
 
   // Pay status badge
   let payBadge = '';
@@ -1011,77 +1075,112 @@ function renderCard(p) {
   else if (payStatus === 'Частково') payBadge = '<span class="badge badge-partial">Частково</span>';
   else if (payStatus === 'Не оплачено') payBadge = '<span class="badge badge-unpaid">Не оплачено</span>';
 
-  // Type badge for passengers
-  const typeBadge = isPax ? `<span class="badge badge-pax">👤 Пасажир${seats ? ' · 💺' + seats : ''}</span>` : '';
+  // Control check badge
+  let checkBadge = '';
+  if (controlCheck === 'Готова до маршруту') checkBadge = '<span class="badge badge-confirmed">Готова</span>';
+  else if (controlCheck === 'В перевірці') checkBadge = '<span class="badge badge-work">В перевірці</span>';
 
-  // Route line
+  // Route line with address
   let routeLine = '';
-  if (isPax && addressFrom && addressTo) {
-    routeLine = `<div class="card-route">📍 ${addressFrom} → ${addressTo}</div>`;
-  } else if (!isPax && receiver) {
-    routeLine = `<div class="card-route">📍 ${name} → ${receiver}</div>`;
+  if (addressTo) {
+    routeLine = `<div class="card-route">📍 ${addressTo}</div>`;
   }
 
   // Meta tags
   let metaTags = '';
   if (auto) metaTags += `<span class="meta-tag">🚐 ${auto}</span>`;
-  if (addressTo) metaTags += `<span class="meta-tag">📍 ${addressTo.substring(0, 40)}</span>`;
   if (debt > 0) metaTags += `<span class="meta-tag meta-debt">💰 Борг: ${debt}</span>`;
   if (note) metaTags += `<span class="meta-tag">📝 ${note.substring(0, 30)}</span>`;
 
-  // Detail fields
-  const fields = [
+  // ===== SECTIONS =====
+  // 1. Основне — контакти та адреси
+  const sectionOsnovne = renderDetailSection('📋', 'Основне', [
     ['PKG_ID', pkgId],
-    ['Тип', isPax ? 'Пасажир' : 'Посилка'],
+    ['Напрям', direction],
+    ['Дата створення', dateCreated],
+    ['SOURCE_SHEET', p['SOURCE_SHEET'] || ''],
     ['ПІБ відправника', name],
-    ['Телефон', phone],
-    ['ПІБ отримувача', receiver],
-    ['Телефон отримувача', p['Телефон отримувача'] || ''],
+    ['Телефон відправника', phone],
     ['Адреса відправки', addressFrom],
-    ['Адреса призначення', addressTo],
-    ['Вага (кг)', weight],
-    ['Сума', `${price} ${currency}`],
-    ['Завдаток', deposit],
-    ['Борг', debt],
-    ['Статус оплати', payStatus],
-    ['Статус ліда', leadStatus],
-    ['Номер ТТН', ttn],
-    ['Номер авто', auto],
-    ['Внутрішній №', p['Внутрішній №'] || ''],
-    ['Примітка', note]
-  ];
+    ['ПІБ отримувача', receiver],
+    ['Телефон отримувача', receiverPhone],
+    ['Адреса в Європі', addressTo],
+  ], pkgId, true);
 
-  const detailsHtml = fields.map(([label, value]) => `
-    <div class="detail-field">
-      <span class="detail-label">${label}</span>
-      <span class="detail-value" data-pkg="${pkgId}" data-col="${label}">
-        ${value || '—'}
-        <button class="edit-btn" onclick="event.stopPropagation(); startEdit(this, '${pkgId}', '${label}')">✏️</button>
-      </span>
-    </div>
-  `).join('');
+  // 2. Посилка — вміст, вага, ТТН
+  const sectionPosylka = renderDetailSection('📦', 'Посилка', [
+    ['Номер ТТН', ttn],
+    ['Внутрішній №', p['Внутрішній №'] || ''],
+    ['Опис', p['Опис'] || ''],
+    ['Деталі', p['Деталі'] || ''],
+    ['Кількість позицій', p['Кількість позицій'] || ''],
+    ['Кг', weight],
+    ['Оціночна вартість', p['Оціночна вартість'] || ''],
+    ['Статус посилки', statusPkg],
+    ['Контроль перевірки', controlCheck],
+    ['Дата перевірки', p['Дата перевірки'] || ''],
+    ['Фото посилки', p['Фото посилки'] || ''],
+    ['Тег', p['Тег'] || ''],
+    ['Примітка', note],
+  ], pkgId, false);
+
+  // 3. Фінанси — оплати, борг
+  const sectionFinance = renderDetailSection('💰', 'Фінанси', [
+    ['Сума', price ? price + ' ' + currency : ''],
+    ['Завдаток', deposit ? deposit + ' ' + (p['Валюта завдатку'] || '') : ''],
+    ['Борг', debt ? String(debt) : ''],
+    ['Форма оплати', p['Форма оплати'] || ''],
+    ['Статус оплати', payStatus],
+    ['Примітка оплати', p['Примітка оплати'] || ''],
+    ['Сума НП', p['Сума НП'] || ''],
+    ['Валюта НП', p['Валюта НП'] || ''],
+    ['Форма НП', p['Форма НП'] || ''],
+    ['Статус НП', p['Статус НП'] || ''],
+  ], pkgId, false);
+
+  // 4. Системні — маршрут, статуси, архів
+  const sectionSystem = renderDetailSection('⚙️', 'Системні', [
+    ['Статус ліда', leadStatus],
+    ['Статус CRM', statusCrm],
+    ['Дата відправки', p['Дата відправки'] || ''],
+    ['Таймінг', p['Таймінг'] || ''],
+    ['Номер авто', auto],
+    ['RTE_ID', p['RTE_ID'] || ''],
+    ['Дата отримання', p['Дата отримання'] || ''],
+    ['Рейтинг', p['Рейтинг'] || ''],
+    ['Коментар рейтингу', p['Коментар рейтингу'] || ''],
+    ['Примітка СМС', p['Примітка СМС'] || ''],
+    ['CLI_ID', p['CLI_ID'] || ''],
+    ['ORDER_ID', p['ORDER_ID'] || ''],
+  ], pkgId, false);
 
   return `
     <div class="card ${statusClass}" data-id="${pkgId}">
       <div class="card-top" onclick="toggleCard('${pkgId}')">
         <input type="checkbox" class="card-checkbox" onclick="event.stopPropagation(); toggleSelect('${pkgId}')" ${selectedIds.has(pkgId) ? 'checked' : ''}>
         <span class="badge-dir ${dirClass}">${dirLabel}</span>
-        ${typeBadge}
         <span class="card-phone">${phone}</span>
         ${weight ? `<span class="badge-weight">⚖️ ${weight} кг</span>` : ''}
         <span class="card-price">${price ? price + ' ' + currency : ''}</span>
       </div>
       <div class="card-info">
-        <span>${isPax ? '👤' : '📦'}</span>
-        <span class="card-name">${name}</span>
+        <span>📦</span>
         <span class="card-pkgid">${pkgId}</span>
         ${leadBadge}
         ${payBadge}
+        ${checkBadge}
+      </div>
+      <div class="card-info">
+        <span>📍</span>
+        <span class="card-name">${name} → ${receiver || '—'}</span>
       </div>
       ${routeLine}
       ${metaTags ? `<div class="card-meta">${metaTags}</div>` : ''}
       <div class="card-details ${isOpen ? 'open' : ''}" id="details-${pkgId}">
-        <div class="details-grid">${detailsHtml}</div>
+        ${sectionOsnovne}
+        ${sectionPosylka}
+        ${sectionFinance}
+        ${sectionSystem}
         <div class="card-actions">
           <button onclick="event.stopPropagation(); window.open('tel:${phone}')">📞 Дзвінок</button>
           <button onclick="event.stopPropagation(); openMessenger('${phone}')">✉️ Написати</button>
