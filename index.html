@@ -623,6 +623,177 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* ===== ADD FORM BOTTOM-SHEET ===== */
+.add-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  display: none; align-items: flex-end; justify-content: center;
+  transition: opacity 0.3s;
+}
+.add-overlay.open { display: flex; }
+
+.add-sheet {
+  background: #fff;
+  width: 100%; max-width: 540px;
+  max-height: 92vh;
+  border-radius: 20px 20px 0 0;
+  overflow-y: auto;
+  animation: slideUp 0.35s ease-out;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.add-sheet-header {
+  position: sticky; top: 0; z-index: 2;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.add-sheet-header.dir-ue { background: linear-gradient(135deg, #fef3c7, #fff7ed); }
+.add-sheet-header.dir-eu { background: linear-gradient(135deg, #dbeafe, #ede9fe); }
+.add-sheet-header h3 { font-size: 16px; font-weight: 700; margin: 0; }
+.add-sheet-close {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: none; background: rgba(0,0,0,0.06); font-size: 18px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+.add-dir-toggle {
+  display: flex; gap: 6px; padding: 12px 20px 8px;
+}
+.add-dir-btn {
+  flex: 1; padding: 10px 8px; border-radius: 10px;
+  border: 2px solid var(--border); background: #fff;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all 0.2s;
+}
+.add-dir-btn.active-ue {
+  background: linear-gradient(135deg, #fef3c7, #fff7ed);
+  border-color: #f59e0b; color: #92400e;
+}
+.add-dir-btn.active-eu {
+  background: linear-gradient(135deg, #dbeafe, #ede9fe);
+  border-color: #3b82f6; color: #1e40af;
+}
+
+.add-form-body { padding: 0 20px 20px; }
+
+.add-section {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.add-section-title {
+  padding: 10px 14px;
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; user-select: none;
+}
+.add-section-title.sec-sms { background: #f0fdf4; color: #166534; }
+.add-section-title.sec-sender { background: #fff7ed; color: #9a3412; }
+.add-section-title.sec-receiver { background: #eff6ff; color: #1e40af; }
+.add-section-title.sec-ue { background: #fefce8; color: #854d0e; }
+.add-section-body { padding: 14px; }
+
+.add-row { margin-bottom: 12px; }
+.add-row:last-child { margin-bottom: 0; }
+.add-row label {
+  display: block; font-size: 11px; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 4px;
+}
+.add-row label .req { color: var(--danger); }
+.add-row input, .add-row textarea, .add-row select {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: inherit; font-size: 13px;
+  background: #fafbfc; transition: border-color 0.2s;
+  outline: none;
+}
+.add-row input:focus, .add-row textarea:focus, .add-row select:focus {
+  border-color: var(--info); background: #fff;
+}
+.add-row textarea { resize: vertical; min-height: 70px; }
+
+.add-row-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+
+.add-delivery-toggle {
+  display: flex; gap: 6px; margin-bottom: 12px;
+}
+.add-delivery-btn {
+  flex: 1; padding: 8px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: #fff;
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all 0.2s;
+}
+.add-delivery-btn.active {
+  background: var(--info); border-color: var(--info); color: #fff;
+}
+
+.add-swiss-dropdown {
+  margin-bottom: 8px;
+}
+.add-swiss-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 10px; border-radius: 6px;
+  border: 1px solid #e2e8f0; background: #f8fafc;
+  font-size: 11px; font-weight: 600; color: var(--info);
+  cursor: pointer; transition: all 0.2s;
+}
+.add-swiss-btn:hover { background: #eff6ff; }
+.add-swiss-list {
+  display: none; margin-top: 4px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: #fff; max-height: 200px; overflow-y: auto;
+}
+.add-swiss-list.open { display: block; }
+.add-swiss-item {
+  padding: 8px 12px; font-size: 11px; cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.add-swiss-item:hover { background: #eff6ff; }
+.add-swiss-item:last-child { border-bottom: none; }
+.add-swiss-city { font-weight: 600; }
+.add-swiss-addr { color: var(--text-secondary); font-size: 10px; }
+
+.add-sms-parse-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px;
+  border: none; background: var(--success); color: #fff;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; margin-top: 8px;
+}
+.add-sms-parse-btn:hover { filter: brightness(1.1); }
+
+.add-dup-warning {
+  display: none; padding: 10px 14px;
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: 8px; font-size: 11px; color: #991b1b;
+  margin-top: 10px;
+}
+.add-dup-warning.visible { display: block; }
+
+.add-form-footer {
+  position: sticky; bottom: 0;
+  padding: 12px 20px;
+  background: #fff; border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.add-form-footer button {
+  flex: 1; padding: 12px; border-radius: 10px;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; border: none;
+}
+.add-btn-cancel { background: #f1f5f9; color: var(--text-primary); }
+.add-btn-save { background: var(--success); color: #fff; }
+.add-btn-save:hover { filter: brightness(1.1); }
+.add-btn-save.dir-ue { background: linear-gradient(135deg, #f59e0b, #f97316); }
+.add-btn-save.dir-eu { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+
 /* ===== FAB (Add button) ===== */
 .fab {
   position: fixed;
@@ -972,6 +1143,198 @@ body {
     </button>
   </div>
 </nav>
+
+<!-- ===== ADD PARCEL FORM ===== -->
+<div class="add-overlay" id="addFormOverlay" onclick="if(event.target===this)closeAddForm()">
+  <div class="add-sheet">
+    <div class="add-sheet-header dir-ue" id="addSheetHeader">
+      <h3>📦 Нова посилка</h3>
+      <button class="add-sheet-close" onclick="closeAddForm()">&times;</button>
+    </div>
+
+    <!-- Direction toggle -->
+    <div class="add-dir-toggle">
+      <button class="add-dir-btn active-ue" id="addDirUe" onclick="setAddDirection('ue')">🇺🇦 → 🇪🇺 УК → Європа</button>
+      <button class="add-dir-btn" id="addDirEu" onclick="setAddDirection('eu')">🇪🇺 → 🇺🇦 Європа → УК</button>
+    </div>
+    <input type="hidden" id="fDirection" value="ue">
+
+    <div class="add-form-body">
+      <!-- SMS Parser -->
+      <div class="add-section">
+        <div class="add-section-title sec-sms" onclick="toggleAddSection(this)">
+          📋 SMS-парсер <span style="margin-left:auto;font-size:10px;">▲ Згорнути</span>
+        </div>
+        <div class="add-section-body" id="smsParserWrap">
+          <div class="add-row">
+            <textarea id="fSmsText" placeholder="Турко Сергій +41797856664 Цюріх, документи 2кг"></textarea>
+          </div>
+          <button class="add-sms-parse-btn" onclick="parseSmsText()">🔍 Розпізнати та заповнити</button>
+          <div class="add-dup-warning" id="duplicateWarning"></div>
+        </div>
+      </div>
+
+      <!-- ═══ EU → UA (Європа→Україна) ═══ -->
+      <div id="fEuSection">
+        <!-- Sender (in Europe) -->
+        <div class="add-section">
+          <div class="add-section-title sec-sender">📤 Відправник (Європа)</div>
+          <div class="add-section-body">
+            <div class="add-row">
+              <label>Піб відправника <span class="req">*</span></label>
+              <input type="text" id="fSender" placeholder="Прізвище Ім'я">
+            </div>
+            <div class="add-row">
+              <label>Телефон відправника <span class="req">*</span></label>
+              <input type="tel" id="fPhone" placeholder="+41... / +49... / +48..." oninput="checkDuplicatePhone(this.value)">
+            </div>
+            <div class="add-row">
+              <label>Адреса відправника <span class="req">*</span></label>
+              <div class="add-swiss-dropdown" id="swissDropdownSender">
+                <button type="button" class="add-swiss-btn" onclick="toggleSwissList('sender')">🇨🇭 Наші точки ▼</button>
+                <div class="add-swiss-list" id="swissListSender"></div>
+              </div>
+              <input type="text" id="fAddressFrom" placeholder="Адреса в Європі">
+            </div>
+            <div class="add-row-grid">
+              <div class="add-row">
+                <label>Оціночна вартість (€) ±</label>
+                <input type="number" id="fEstValue" placeholder="0" min="0">
+              </div>
+              <div class="add-row">
+                <label>Приблизна вага (кг)</label>
+                <input type="number" id="fWeight" placeholder="0" min="0" step="0.1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Receiver (in Ukraine) -->
+        <div class="add-section">
+          <div class="add-section-title sec-receiver" onclick="toggleAddSection(this)">
+            📍 Дані отримувача в Україні <span style="margin-left:auto;font-size:10px;">▼ Розгорнути</span>
+          </div>
+          <div class="add-section-body" style="display:none;" id="fReceiverSection">
+            <div class="add-row">
+              <label>ПІБ отримувача <span class="req">*</span></label>
+              <input type="text" id="fReceiver" placeholder="Прізвище Ім'я По-батькові">
+            </div>
+            <div class="add-row">
+              <label>Телефон отримувача <span class="req">*</span></label>
+              <input type="tel" id="fPhoneReceiver" placeholder="+380...">
+            </div>
+            <div class="add-delivery-toggle">
+              <button class="add-delivery-btn active" onclick="setDeliveryType('np')">📦 Нова Пошта</button>
+              <button class="add-delivery-btn" onclick="setDeliveryType('address')">🏠 Адресна</button>
+            </div>
+            <div id="fNpBlock">
+              <div class="add-row">
+                <label>Нова Пошта (місто + відділення) <span class="req">*</span></label>
+                <input type="text" id="fCityNP" placeholder="Київ 174">
+              </div>
+            </div>
+            <div id="fAddrBlock" style="display:none;">
+              <div class="add-row">
+                <label>Місто / Село <span class="req">*</span></label>
+                <input type="text" id="fAddrCity" placeholder="Київ">
+              </div>
+              <div class="add-row">
+                <label>Вулиця <span class="req">*</span></label>
+                <input type="text" id="fAddrStreet" placeholder="вул. Хрещатик">
+              </div>
+              <div class="add-row-grid">
+                <div class="add-row">
+                  <label>Будинок <span class="req">*</span></label>
+                  <input type="text" id="fAddrHouse" placeholder="12">
+                </div>
+                <div class="add-row">
+                  <label>Квартира</label>
+                  <input type="text" id="fAddrApt" placeholder="34">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ UA → EU (Україна→Європа) ═══ -->
+      <div id="fUeSection" style="display:none;">
+        <div class="add-section">
+          <div class="add-section-title sec-ue">📦 Дані посилки (УК → Європа)</div>
+          <div class="add-section-body">
+            <div class="add-row">
+              <label>Піб отримувача <span class="req">*</span></label>
+              <input type="text" id="fReceiverUE" placeholder="Прізвище Ім'я">
+            </div>
+            <div class="add-row">
+              <label>Телефон отримувача <span class="req">*</span></label>
+              <input type="tel" id="fPhoneReceiverUE" placeholder="+41... / +49..." oninput="checkDuplicatePhone(this.value)">
+            </div>
+            <div class="add-row">
+              <label>Адреса в Європі <span class="req">*</span></label>
+              <div class="add-swiss-dropdown" id="swissDropdownReceiver">
+                <button type="button" class="add-swiss-btn" onclick="toggleSwissList('receiver')">🇨🇭 Наші точки ▼</button>
+                <div class="add-swiss-list" id="swissListReceiver"></div>
+              </div>
+              <input type="text" id="fAddressTo" placeholder="Адреса в Європі">
+            </div>
+            <div class="add-row">
+              <label>Номер ТТН</label>
+              <input type="text" id="fTTN" placeholder="Номер ТТН">
+            </div>
+            <div class="add-row-grid">
+              <div class="add-row">
+                <label>Приблизна вага (кг)</label>
+                <input type="number" id="fWeightUE" placeholder="0" min="0" step="0.1">
+              </div>
+              <div class="add-row">
+                <label>Оціночна вартість (€) ±</label>
+                <input type="number" id="fEstValueUE" placeholder="0" min="0">
+              </div>
+            </div>
+            <div class="add-row-grid">
+              <div class="add-row">
+                <label>Опис</label>
+                <input type="text" id="fDescription" placeholder="Опис вмісту">
+              </div>
+              <div class="add-row">
+                <label>Кількість позицій</label>
+                <input type="number" id="fQty" placeholder="1" min="1" value="1">
+              </div>
+            </div>
+            <div class="add-row-grid">
+              <div class="add-row">
+                <label>Сума</label>
+                <input type="number" id="fSum" placeholder="0" min="0">
+              </div>
+              <div class="add-row">
+                <label>Валюта</label>
+                <select id="fCurrency">
+                  <option value="UAH">UAH</option>
+                  <option value="EUR">EUR</option>
+                  <option value="CHF">CHF</option>
+                  <option value="USD">USD</option>
+                  <option value="PLN">PLN</option>
+                  <option value="CZK">CZK</option>
+                </select>
+              </div>
+            </div>
+            <div class="add-row">
+              <label>Примітка</label>
+              <input type="text" id="fNote" placeholder="Примітка">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer buttons -->
+    <div class="add-form-footer">
+      <button class="add-btn-cancel" onclick="closeAddForm()">Скасувати</button>
+      <button class="add-btn-save dir-ue" id="addBtnSave" onclick="saveParcel()">Зберегти</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== FAB ===== -->
 <button class="fab" onclick="openAddForm()">+</button>
@@ -1927,7 +2290,344 @@ async function deleteRecord(pkgId) {
 }
 
 function createRoute() { alert('Створення нового маршруту'); }
-function openAddForm() { alert('Форма додавання нового запису — буде в наступному кроці'); }
+
+// ===== ADD PARCEL FORM =====
+const SWISS_POINTS = [
+  { city: 'Цюрих', addr: 'Parking Theater 11, Dorflistrasse 90, 8050 Zürich' },
+  { city: 'Цуг', addr: 'Bahnhofplatz, 6300 Zug' },
+  { city: 'Люцерн', addr: 'Tourist Bus Parking Landenberg, Alpenquai, 6005 Luzern' },
+  { city: 'Берн', addr: 'Parkplatz 7c, Beundenfeld, 3014 Bern' },
+  { city: 'Базель', addr: 'Basel Meret Oppenheim Strasse SBB Station, 4053 Basel' },
+  { city: 'Сен-Гален', addr: 'Bahnhofpl. 8b, 9000 St. Gallen' },
+  { city: 'Лозана', addr: 'Avenue du Grey 43, Lausanne' },
+  { city: 'Монтре', addr: 'Rte des Châtaigniers 7, 1816 Montreux' },
+  { city: 'Женева', addr: 'P+R Bout-du-Monde, Rte de Vessy 12, 1206 Genève' }
+];
+
+let addFormDirection = 'ue';
+let deliveryType = 'np';
+
+function openAddForm() {
+  addFormDirection = currentDirection;
+  document.getElementById('fDirection').value = addFormDirection;
+  clearAddForm();
+  setAddDirection(addFormDirection);
+  initSwissPoints();
+  document.getElementById('addFormOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAddForm() {
+  document.getElementById('addFormOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function setAddDirection(dir) {
+  addFormDirection = dir;
+  document.getElementById('fDirection').value = dir;
+
+  const ueBtn = document.getElementById('addDirUe');
+  const euBtn = document.getElementById('addDirEu');
+  const header = document.getElementById('addSheetHeader');
+  const saveBtn = document.getElementById('addBtnSave');
+  const smsTextarea = document.getElementById('fSmsText');
+
+  ueBtn.className = 'add-dir-btn' + (dir === 'ue' ? ' active-ue' : '');
+  euBtn.className = 'add-dir-btn' + (dir === 'eu' ? ' active-eu' : '');
+
+  header.className = 'add-sheet-header dir-' + dir;
+  saveBtn.className = 'add-btn-save dir-' + dir;
+
+  document.getElementById('fEuSection').style.display = dir === 'eu' ? '' : 'none';
+  document.getElementById('fUeSection').style.display = dir === 'ue' ? '' : 'none';
+
+  if (dir === 'ue') {
+    smsTextarea.placeholder = 'Турко Сергій +41797856664 Цюріх, документи 2кг';
+  } else {
+    smsTextarea.placeholder = 'Іванов Петро +380631234567 Київ, вул. Хрещатик';
+  }
+}
+
+function clearAddForm() {
+  const ids = [
+    'fSmsText','fSender','fPhone','fAddressFrom','fEstValue','fWeight',
+    'fReceiver','fPhoneReceiver','fCityNP','fAddrCity','fAddrStreet',
+    'fAddrHouse','fAddrApt','fReceiverUE','fPhoneReceiverUE','fAddressTo',
+    'fTTN','fWeightUE','fEstValueUE','fDescription','fQty','fSum','fNote'
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('fQty').value = '1';
+  document.getElementById('fCurrency').value = 'UAH';
+  document.getElementById('duplicateWarning').classList.remove('visible');
+  document.getElementById('duplicateWarning').textContent = '';
+  setDeliveryType('np');
+}
+
+function initSwissPoints() {
+  ['Sender', 'Receiver'].forEach(suffix => {
+    const list = document.getElementById('swissList' + suffix);
+    if (!list) return;
+    list.innerHTML = SWISS_POINTS.map((pt, i) => `
+      <div class="add-swiss-item" onclick="selectSwissPoint('${suffix}', ${i})">
+        <span class="add-swiss-city">${pt.city}</span>
+        <span class="add-swiss-addr">${pt.addr.substring(0, 40)}...</span>
+      </div>
+    `).join('');
+  });
+}
+
+function toggleSwissList(type) {
+  const suffix = type === 'sender' ? 'Sender' : 'Receiver';
+  document.getElementById('swissList' + suffix).classList.toggle('open');
+}
+
+function selectSwissPoint(suffix, idx) {
+  const pt = SWISS_POINTS[idx];
+  const fieldId = suffix === 'Sender' ? 'fAddressFrom' : 'fAddressTo';
+  document.getElementById(fieldId).value = pt.city + ' — ' + pt.addr;
+  document.getElementById('swissList' + suffix).classList.remove('open');
+}
+
+function toggleAddSection(titleEl) {
+  const body = titleEl.nextElementSibling;
+  const arrow = titleEl.querySelector('span:last-child');
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    if (arrow) arrow.textContent = '▲ Згорнути';
+  } else {
+    body.style.display = 'none';
+    if (arrow) arrow.textContent = '▼ Розгорнути';
+  }
+}
+
+function setDeliveryType(type) {
+  deliveryType = type;
+  const btns = document.querySelectorAll('.add-delivery-btn');
+  btns[0].classList.toggle('active', type === 'np');
+  btns[1].classList.toggle('active', type === 'address');
+  document.getElementById('fNpBlock').style.display = type === 'np' ? '' : 'none';
+  document.getElementById('fAddrBlock').style.display = type === 'address' ? '' : 'none';
+}
+
+// ===== SMS PARSER =====
+function parseSmsText() {
+  const text = document.getElementById('fSmsText').value.trim();
+  if (!text) { showToast('Вставте текст для розпізнавання', 'info'); return; }
+
+  // Phone patterns
+  const phones = text.match(/\+?\d[\d\s\-()]{8,}/g) || [];
+  const cleanPhones = phones.map(p => p.replace(/[\s\-()]/g, ''));
+
+  // Weight: "2кг", "5 кг", "2.5кг"
+  const weightMatch = text.match(/(\d+[.,]?\d*)\s*кг/i);
+  const weight = weightMatch ? weightMatch[1].replace(',', '.') : '';
+
+  // NP: "Київ 174", "Одеса №5", "Львів відділення 12"
+  const npMatch = text.match(/([\wа-яіїєґА-ЯІЇЄҐ']+)\s+(?:№|відділення\s*)?(\d{1,4})/);
+
+  // Swiss city detection
+  const swissCities = SWISS_POINTS.map(p => p.city.toLowerCase());
+  let foundSwiss = '';
+  swissCities.forEach((city, i) => {
+    if (text.toLowerCase().includes(city)) {
+      foundSwiss = SWISS_POINTS[i].city + ' — ' + SWISS_POINTS[i].addr;
+    }
+  });
+
+  // Name: first 2-3 capitalized words
+  const words = text.split(/[\s,;]+/);
+  const nameWords = [];
+  for (const w of words) {
+    if (/^[A-ZА-ЯІЇЄҐ][a-zа-яіїєґ']+$/.test(w) && nameWords.length < 3) {
+      nameWords.push(w);
+    } else if (nameWords.length > 0) break;
+  }
+  const name = nameWords.join(' ');
+
+  if (addFormDirection === 'eu') {
+    // EU→UA: sender in Europe, receiver in Ukraine
+    if (name) document.getElementById('fSender').value = name;
+    if (cleanPhones[0]) document.getElementById('fPhone').value = cleanPhones[0];
+    if (foundSwiss) document.getElementById('fAddressFrom').value = foundSwiss;
+    if (cleanPhones[1]) document.getElementById('fPhoneReceiver').value = cleanPhones[1];
+    if (npMatch) document.getElementById('fCityNP').value = npMatch[1] + ' ' + npMatch[2];
+    if (weight) document.getElementById('fWeight').value = weight;
+
+    // Open receiver section if data detected
+    if (cleanPhones[1] || npMatch) {
+      document.getElementById('fReceiverSection').style.display = '';
+      const arrow = document.querySelector('#fEuSection .sec-receiver span:last-child');
+      if (arrow) arrow.textContent = '▲ Згорнути';
+    }
+  } else {
+    // UA→EU: receiver in Europe
+    if (name) document.getElementById('fReceiverUE').value = name;
+    if (cleanPhones[0]) document.getElementById('fPhoneReceiverUE').value = cleanPhones[0];
+    if (foundSwiss) document.getElementById('fAddressTo').value = foundSwiss;
+    if (weight) document.getElementById('fWeightUE').value = weight;
+  }
+
+  // Check for duplicate
+  if (cleanPhones[0]) checkDuplicatePhone(cleanPhones[0]);
+
+  const filled = [name, cleanPhones[0], weight, foundSwiss, npMatch ? 'NP' : ''].filter(Boolean);
+  showToast(`Розпізнано: ${filled.length} полів`, 'success');
+}
+
+// ===== DUPLICATE CHECK =====
+function checkDuplicatePhone(phone) {
+  if (!phone || phone.length < 8) {
+    document.getElementById('duplicateWarning').classList.remove('visible');
+    return;
+  }
+  const clean = phone.replace(/[\s\-()]/g, '');
+  const dup = allData.find(p =>
+    (p['Телефон реєстратора'] || '').replace(/[\s\-()]/g, '').includes(clean) ||
+    clean.includes((p['Телефон реєстратора'] || '').replace(/[\s\-()]/g, ''))
+  );
+  const warn = document.getElementById('duplicateWarning');
+  if (dup) {
+    warn.textContent = '⚠️ Можливий дублікат: ' + (dup['Піб відправника'] || '') + ' — ' + (dup['Телефон реєстратора'] || '') + ' (ID: ' + dup['PKG_ID'] + ')';
+    warn.classList.add('visible');
+  } else {
+    warn.classList.remove('visible');
+  }
+}
+
+// ===== SAVE PARCEL =====
+async function saveParcel() {
+  const dir = addFormDirection;
+  let errors = [];
+  let data = {};
+
+  if (dir === 'eu') {
+    // EU → UA
+    const sender = document.getElementById('fSender').value.trim();
+    const phone = document.getElementById('fPhone').value.trim();
+    const addressFrom = document.getElementById('fAddressFrom').value.trim();
+    const receiver = document.getElementById('fReceiver').value.trim();
+    const phoneReceiver = document.getElementById('fPhoneReceiver').value.trim();
+
+    if (!sender) errors.push('Піб відправника');
+    if (!phone) errors.push('Телефон відправника');
+    if (!addressFrom) errors.push('Адреса відправника');
+    if (!receiver) errors.push('ПІБ отримувача');
+    if (!phoneReceiver) errors.push('Телефон отримувача');
+
+    let addressTo = '';
+    if (deliveryType === 'np') {
+      const cityNP = document.getElementById('fCityNP').value.trim();
+      if (!cityNP) errors.push('Нова Пошта (місто + відділення)');
+      addressTo = 'НП: ' + cityNP;
+    } else {
+      const addrCity = document.getElementById('fAddrCity').value.trim();
+      const addrStreet = document.getElementById('fAddrStreet').value.trim();
+      const addrHouse = document.getElementById('fAddrHouse').value.trim();
+      const addrApt = document.getElementById('fAddrApt').value.trim();
+      if (!addrCity) errors.push('Місто');
+      if (!addrStreet) errors.push('Вулиця');
+      if (!addrHouse) errors.push('Будинок');
+      addressTo = [addrCity, addrStreet, 'буд.' + addrHouse, addrApt ? 'кв.' + addrApt : ''].filter(Boolean).join(', ');
+    }
+
+    if (errors.length > 0) {
+      showToast('Заповніть: ' + errors.join(', '), 'error');
+      return;
+    }
+
+    data = {
+      direction: 'ЄВ→УК',
+      pib: sender,
+      phone: phone,
+      addressFrom: addressFrom,
+      addressTo: addressTo,
+      receiver: receiver,
+      phoneReceiver: phoneReceiver,
+      weight: document.getElementById('fWeight').value || '',
+      estimatedValue: document.getElementById('fEstValue').value || ''
+    };
+  } else {
+    // UA → EU
+    const receiverUE = document.getElementById('fReceiverUE').value.trim();
+    const phoneReceiverUE = document.getElementById('fPhoneReceiverUE').value.trim();
+    const addressTo = document.getElementById('fAddressTo').value.trim();
+
+    if (!receiverUE) errors.push('Піб отримувача');
+    if (!phoneReceiverUE) errors.push('Телефон отримувача');
+    if (!addressTo) errors.push('Адреса в Європі');
+
+    if (errors.length > 0) {
+      showToast('Заповніть: ' + errors.join(', '), 'error');
+      return;
+    }
+
+    data = {
+      direction: 'УК→ЄВ',
+      pib: receiverUE,
+      phone: phoneReceiverUE,
+      addressFrom: '',
+      addressTo: addressTo,
+      ttn: document.getElementById('fTTN').value || '',
+      weight: document.getElementById('fWeightUE').value || '',
+      estimatedValue: document.getElementById('fEstValueUE').value || '',
+      description: document.getElementById('fDescription').value || '',
+      qty: document.getElementById('fQty').value || '1',
+      suma: document.getElementById('fSum').value || '',
+      currency: document.getElementById('fCurrency').value || 'UAH',
+      note: document.getElementById('fNote').value || ''
+    };
+  }
+
+  // Save to server
+  const saveBtn = document.getElementById('addBtnSave');
+  saveBtn.textContent = '⏳ Збереження...';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await apiPost('addPassenger', { data });
+
+    if (res.ok) {
+      // Add locally
+      const newItem = {
+        'PKG_ID': res.pax_id || ('PKG_' + Date.now()),
+        'Напрям': data.direction,
+        'Піб відправника': data.pib,
+        'Телефон реєстратора': data.phone,
+        'Адреса відправки': data.addressFrom || '',
+        'Адреса в Європі': data.addressTo || '',
+        'Кг': data.weight || '',
+        'Сума': data.suma || '',
+        'Валюта оплати': data.currency || 'UAH',
+        'Завдаток': '0',
+        'Борг': data.suma || '0',
+        'Статус оплати': 'Не оплачено',
+        'Статус ліда': 'Новий',
+        'Статус CRM': 'Активний',
+        'Контроль перевірки': '',
+        'Дата перевірки': '',
+        'Номер авто': '',
+        'RTE_ID': '',
+        'Примітка': data.note || '',
+        'Тип запису': 'Посилка'
+      };
+      allData.unshift(newItem);
+      renderCards();
+      updateCounters();
+      closeAddForm();
+      showToast('Посилку додано!', 'success');
+    } else {
+      showToast('Помилка збереження: ' + (res.error || ''), 'error');
+    }
+  } catch (err) {
+    showToast('Помилка: ' + err.message, 'error');
+  } finally {
+    saveBtn.textContent = 'Зберегти';
+    saveBtn.disabled = false;
+  }
+}
 
 function showLoader() {
   const el = document.getElementById('fullscreenLoader');
