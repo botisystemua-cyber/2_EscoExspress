@@ -681,9 +681,10 @@ body {
 
 <script>
 // ===== КОНФІГУРАЦІЯ =====
-// Замініть на реальний URL після Deploy GAS → Web App
-const GAS_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
-const USE_MOCK = !GAS_URL || GAS_URL.includes('YOUR_GAS');
+// GAS Web App URLs
+const GAS_URL_POSYLKI = 'https://script.google.com/macros/s/AKfycbweoXvCYqGbzNjPg_IR4DFG4YIU91-Rlvr1QM_gVcHPuVJJ4nyvB9e-hAMldtCvcJMA/exec';
+const GAS_URL = GAS_URL_POSYLKI;
+const USE_MOCK = false;
 
 // ===== GLOBAL STATE =====
 let allData = [];
