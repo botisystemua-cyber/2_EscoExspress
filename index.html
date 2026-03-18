@@ -962,6 +962,173 @@ body {
   background: #fff5f5;
 }
 
+/* ===== COLUMN CONFIGURATOR OVERLAY ===== */
+.colcfg-overlay {
+  position: fixed; inset: 0; z-index: 1100;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  transition: opacity 0.3s;
+}
+.colcfg-overlay.open { display: flex; }
+
+.colcfg-panel {
+  background: #fff;
+  width: 94%; max-width: 480px;
+  max-height: 85vh;
+  border-radius: 16px;
+  overflow: hidden;
+  animation: colcfgIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+@keyframes colcfgIn { from { transform: scale(0.92) translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.colcfg-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #f0f4ff, #f5f0ff);
+}
+.colcfg-header h3 { font-size: 15px; font-weight: 700; margin: 0; }
+.colcfg-close {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: none; background: rgba(0,0,0,0.06); font-size: 18px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.colcfg-close:hover { background: rgba(0,0,0,0.12); }
+
+.colcfg-tabs {
+  display: flex; gap: 4px;
+  padding: 12px 16px 0;
+  background: #fafbfc;
+}
+.colcfg-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.colcfg-tab::after {
+  content: '';
+  position: absolute; bottom: 0; left: 20%; right: 20%;
+  height: 3px; border-radius: 3px 3px 0 0;
+  background: transparent; transition: all 0.2s;
+}
+.colcfg-tab.active {
+  color: var(--primary);
+  background: #fff;
+}
+.colcfg-tab.active::after {
+  background: var(--primary);
+  left: 10%; right: 10%;
+}
+.colcfg-tab:hover:not(.active) { color: var(--text-primary); background: rgba(0,0,0,0.03); }
+
+.colcfg-subtitle {
+  padding: 10px 20px 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+
+.colcfg-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  background: #fff;
+}
+.colcfg-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin: 2px 0;
+  user-select: none;
+}
+.colcfg-item:hover { background: #f0f4ff; }
+.colcfg-item:active { transform: scale(0.98); }
+
+.colcfg-check {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: transparent;
+  background: #fff;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.colcfg-item.checked .colcfg-check {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.colcfg-item-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.colcfg-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.colcfg-item.disabled .colcfg-item-hint {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.colcfg-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  background: #fafbfc;
+}
+.colcfg-footer .colcfg-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  flex: 1;
+}
+.colcfg-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.colcfg-btn:active { transform: scale(0.96); }
+.colcfg-btn-reset {
+  background: none;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+}
+.colcfg-btn-reset:hover { color: var(--danger); }
+.colcfg-btn-save {
+  background: var(--primary);
+  color: #fff;
+}
+.colcfg-btn-save:hover { background: var(--primary-dark); }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .sidebar { display: none; }
@@ -990,6 +1157,7 @@ body {
     <input type="text" placeholder="Пошук по ПІБ, телефону, ТТН..." id="searchInput" oninput="onSearch(this.value)">
   </div>
   <div class="header-right">
+    <button onclick="openColCfg()" style="background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 10px;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">⚙️ Поля</button>
     <span class="sync-indicator" id="syncStatus">Синхронізовано</span>
     <div class="avatar">ОМ</div>
   </div>
@@ -1136,14 +1304,38 @@ body {
     <button class="bottom-nav-item" onclick="loadData()">
       <span class="nav-icon">🔄</span> Оновити
     </button>
-    <button class="bottom-nav-item" onclick="toggleSidebar()">
-      <span class="nav-icon">📊</span> Колонки
+    <button class="bottom-nav-item" onclick="openColCfg()">
+      <span class="nav-icon">⚙️</span> Поля
     </button>
     <button class="bottom-nav-item" onclick="openAddForm()">
       <span class="nav-icon">➕</span> Додати
     </button>
   </div>
 </nav>
+
+<!-- ===== COLUMN CONFIGURATOR OVERLAY ===== -->
+<div class="colcfg-overlay" id="colCfgOverlay" onclick="if(event.target===this)closeColCfg()">
+  <div class="colcfg-panel">
+    <div class="colcfg-header">
+      <h3>⚙️ Налаштування полів</h3>
+      <button class="colcfg-close" onclick="closeColCfg()">&times;</button>
+    </div>
+    <div class="colcfg-tabs" id="colCfgTabs">
+      <button class="colcfg-tab active" data-mode="card" onclick="switchCfgTab('card')">🃏 Картка</button>
+      <button class="colcfg-tab" data-mode="osnovne" onclick="switchCfgTab('osnovne')">📄 Основне</button>
+      <button class="colcfg-tab" data-mode="parcel" onclick="switchCfgTab('parcel')">📦 Посилка</button>
+    </div>
+    <div class="colcfg-subtitle" id="colCfgSubtitle">Які поля показувати на картці ліда</div>
+    <div class="colcfg-list" id="colCfgList">
+      <!-- Filled by JS -->
+    </div>
+    <div class="colcfg-footer">
+      <span class="colcfg-count" id="colCfgCount">0 обрано</span>
+      <button class="colcfg-btn colcfg-btn-reset" onclick="resetColCfg()">Скинути</button>
+      <button class="colcfg-btn colcfg-btn-save" onclick="saveColCfg()">Зберегти</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== ADD PARCEL FORM ===== -->
 <div class="add-overlay" id="addFormOverlay" onclick="if(event.target===this)closeAddForm()">
@@ -1405,6 +1597,170 @@ let activeRouteIdx = null;
 let currentView = 'parcels';
 let selectedIds = new Set();
 let isLoading = false;
+
+// ===== COLUMN CONFIGURATOR =====
+const ALL_CARD_COLUMNS = [
+  { key: 'phone',       label: '📞 Телефон реєстратора' },
+  { key: 'phoneRecv',   label: '📱 Телефон отримувача' },
+  { key: 'weight',      label: '⚖️ Вага (кг)' },
+  { key: 'sum',         label: '💰 Сума' },
+  { key: 'deposit',     label: '💵 Завдаток' },
+  { key: 'debt',        label: '📛 Борг' },
+  { key: 'ttn',         label: '📋 Номер ТТН' },
+  { key: 'date',        label: '📅 Дата створення' },
+  { key: 'statusPkg',   label: '📦 Статус посилки' },
+  { key: 'tag',         label: '🏷️ Тег' },
+  { key: 'address',     label: '📍 Адреса маршруту' },
+  { key: 'leadBadge',   label: '🔵 Статус ліда' },
+  { key: 'payBadge',    label: '💳 Статус оплати' },
+  { key: 'checkBadge',  label: '✅ Контроль перевірки' },
+  { key: 'route',       label: '🚐 Маршрут / Рейс' },
+  { key: 'note',        label: '📝 Примітка' },
+  { key: 'description', label: '📄 Опис посилки' },
+  { key: 'qty',         label: '📊 Кількість позицій' },
+  { key: 'estValue',    label: '💎 Оціночна вартість' },
+];
+
+const ALL_OSNOVNE_COLUMNS = [
+  { key: 'sender',      label: '👤 Піб відправника' },
+  { key: 'phone',       label: '📞 Телефон реєстратора' },
+  { key: 'addressFrom', label: '📍 Адреса відправки' },
+  { key: 'receiver',    label: '👤 Піб отримувача' },
+  { key: 'phoneRecv',   label: '📱 Телефон отримувача' },
+  { key: 'addressTo',   label: '📍 Адреса доставки' },
+  { key: 'leadStatus',  label: '🔵 Статус ліда' },
+  { key: 'tag',         label: '🏷️ Тег' },
+];
+
+const ALL_PARCEL_COLUMNS = [
+  { key: 'description', label: '📄 Опис' },
+  { key: 'details',     label: '📝 Деталі' },
+  { key: 'qty',         label: '📊 Кількість позицій' },
+  { key: 'weight',      label: '⚖️ Кг' },
+  { key: 'estValue',    label: '💎 Оціночна вартість' },
+  { key: 'ttn',         label: '📋 Номер ТТН' },
+  { key: 'innerNum',    label: '🔢 Внутрішній №' },
+  { key: 'statusPkg',   label: '📦 Статус посилки' },
+  { key: 'sum',         label: '💰 Сума' },
+  { key: 'currency',    label: '💱 Валюта оплати' },
+  { key: 'payStatus',   label: '💳 Статус оплати' },
+  { key: 'photo',       label: '📸 Фото посилки' },
+  { key: 'rating',      label: '⭐ Рейтинг' },
+  { key: 'ratingComment',label: '💬 Коментар рейтингу' },
+];
+
+const DEFAULT_CARD_COLS = ['phone','weight','sum','deposit','debt','ttn','date','statusPkg','tag','address','leadBadge','payBadge','checkBadge','route'];
+const DEFAULT_OSNOVNE_COLS = ['sender','phone','addressFrom','receiver','phoneRecv','addressTo','leadStatus','tag'];
+const DEFAULT_PARCEL_COLS = ['description','details','qty','weight','estValue','ttn','innerNum','statusPkg','sum','currency','payStatus','photo','rating','ratingComment'];
+
+const LS_KEY_CARD = 'esco_posylki_card_cols';
+const LS_KEY_OSNOVNE = 'esco_pkg_osnovne';
+const LS_KEY_PARCEL = 'esco_pkg_parcel';
+
+let colCfgMode = 'card';
+let colCfgTemp = [];
+
+function getVisibleCardColumns() {
+  try { const s = localStorage.getItem(LS_KEY_CARD); if (s) return JSON.parse(s); } catch(e) {}
+  return [...DEFAULT_CARD_COLS];
+}
+function getVisibleOsnovneColumns() {
+  try { const s = localStorage.getItem(LS_KEY_OSNOVNE); if (s) return JSON.parse(s); } catch(e) {}
+  return [...DEFAULT_OSNOVNE_COLS];
+}
+function getVisibleParcelColumns() {
+  try { const s = localStorage.getItem(LS_KEY_PARCEL); if (s) return JSON.parse(s); } catch(e) {}
+  return [...DEFAULT_PARCEL_COLS];
+}
+
+function getCfgDataForMode(mode) {
+  if (mode === 'card') return { all: ALL_CARD_COLUMNS, saved: getVisibleCardColumns(), lsKey: LS_KEY_CARD, defaults: DEFAULT_CARD_COLS, subtitle: 'Які поля показувати на картці ліда' };
+  if (mode === 'osnovne') return { all: ALL_OSNOVNE_COLUMNS, saved: getVisibleOsnovneColumns(), lsKey: LS_KEY_OSNOVNE, defaults: DEFAULT_OSNOVNE_COLS, subtitle: 'Поля на вкладці «Основне» в деталях' };
+  return { all: ALL_PARCEL_COLUMNS, saved: getVisibleParcelColumns(), lsKey: LS_KEY_PARCEL, defaults: DEFAULT_PARCEL_COLS, subtitle: 'Поля на вкладці «Посилка» в деталях' };
+}
+
+function openColCfg() {
+  colCfgMode = 'card';
+  const cfg = getCfgDataForMode('card');
+  colCfgTemp = [...cfg.saved];
+  document.getElementById('colCfgOverlay').classList.add('open');
+  renderCfgTabs();
+  renderCfgList();
+}
+
+function closeColCfg() {
+  document.getElementById('colCfgOverlay').classList.remove('open');
+}
+
+function switchCfgTab(mode) {
+  colCfgMode = mode;
+  const cfg = getCfgDataForMode(mode);
+  colCfgTemp = [...cfg.saved];
+  renderCfgTabs();
+  renderCfgList();
+}
+
+function renderCfgTabs() {
+  document.querySelectorAll('#colCfgTabs .colcfg-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === colCfgMode);
+  });
+  const cfg = getCfgDataForMode(colCfgMode);
+  document.getElementById('colCfgSubtitle').textContent = cfg.subtitle;
+}
+
+function getOtherModesKeys() {
+  const modes = ['card','osnovne','parcel'].filter(m => m !== colCfgMode);
+  const keys = new Set();
+  modes.forEach(m => {
+    const cfg = getCfgDataForMode(m);
+    cfg.saved.forEach(k => keys.add(k));
+  });
+  return keys;
+}
+
+function renderCfgList() {
+  const cfg = getCfgDataForMode(colCfgMode);
+  const container = document.getElementById('colCfgList');
+  const otherKeys = getOtherModesKeys();
+
+  container.innerHTML = cfg.all.map(col => {
+    const isChecked = colCfgTemp.includes(col.key);
+    const isInOther = false; // Don't disable — same key can be in multiple tabs
+    return `
+      <div class="colcfg-item ${isChecked ? 'checked' : ''}" onclick="toggleCfgCol('${col.key}')">
+        <div class="colcfg-check">${isChecked ? '✓' : ''}</div>
+        <span class="colcfg-item-label">${col.label}</span>
+      </div>`;
+  }).join('');
+
+  document.getElementById('colCfgCount').textContent = colCfgTemp.length + ' обрано з ' + cfg.all.length;
+}
+
+function toggleCfgCol(key) {
+  const idx = colCfgTemp.indexOf(key);
+  if (idx >= 0) colCfgTemp.splice(idx, 1);
+  else colCfgTemp.push(key);
+  renderCfgList();
+}
+
+function saveColCfg() {
+  if (colCfgTemp.length === 0) {
+    showToast('Оберіть хоча б 1 поле', 'error');
+    return;
+  }
+  const cfg = getCfgDataForMode(colCfgMode);
+  localStorage.setItem(cfg.lsKey, JSON.stringify(colCfgTemp));
+  showToast('Налаштування збережено', 'success');
+  closeColCfg();
+  renderCards();
+}
+
+function resetColCfg() {
+  const cfg = getCfgDataForMode(colCfgMode);
+  colCfgTemp = [...cfg.defaults];
+  renderCfgList();
+  showToast('Скинуто до стандартних', 'info');
+}
 
 // ===== API MODULE =====
 async function apiPost(action, params = {}) {
@@ -1742,43 +2098,53 @@ function renderCard(p) {
     ? `<div class="card-route-strip">✅ В маршруті: ${rteId}${auto ? ' · 🚐 ' + auto : ''}</div>`
     : '';
 
-  // Meta tags
+  // Meta tags (configurable via column configurator)
+  const visCols = getVisibleCardColumns();
   let metaHtml = '';
-  if (dateCreated) metaHtml += `<span class="meta-tag">📅 ${dateCreated}</span>`;
-  if (statusPkg) metaHtml += `<span class="meta-tag">${statusPkg}</span>`;
-  if (phone) metaHtml += `<span class="meta-tag">📞 ${phone}</span>`;
-  if (tag) metaHtml += `<span class="meta-tag ${tag === 'VIP' || tag === 'срочна' ? 'tag-vip' : ''}">#${tag}</span>`;
+  if (visCols.includes('date') && dateCreated) metaHtml += `<span class="meta-tag">📅 ${dateCreated}</span>`;
+  if (visCols.includes('statusPkg') && statusPkg) metaHtml += `<span class="meta-tag">${statusPkg}</span>`;
+  if (visCols.includes('phone') && phone) metaHtml += `<span class="meta-tag">📞 ${phone}</span>`;
+  if (visCols.includes('phoneRecv') && receiverPhone) metaHtml += `<span class="meta-tag">📱 ${receiverPhone}</span>`;
+  if (visCols.includes('tag') && tag) metaHtml += `<span class="meta-tag ${tag === 'VIP' || tag === 'срочна' ? 'tag-vip' : ''}">#${tag}</span>`;
+  if (visCols.includes('note') && note) metaHtml += `<span class="meta-tag">📝 ${note.substring(0, 30)}${note.length > 30 ? '…' : ''}</span>`;
+  if (visCols.includes('description') && p['Опис']) metaHtml += `<span class="meta-tag">📄 ${(p['Опис']).substring(0, 25)}${(p['Опис']).length > 25 ? '…' : ''}</span>`;
+  if (visCols.includes('qty') && p['Кількість позицій']) metaHtml += `<span class="meta-tag">📊 ${p['Кількість позицій']} шт</span>`;
+  if (visCols.includes('estValue') && p['Оціночна вартість']) metaHtml += `<span class="meta-tag">💎 ${p['Оціночна вартість']}</span>`;
 
   // ===== TAB PANELS =====
-  // 📦 Посилка
-  const tabParcel = renderDetailGrid([
-    ['Опис', p['Опис'] || ''],
-    ['Деталі', p['Деталі'] || ''],
-    ['Кількість позицій', p['Кількість позицій'] || ''],
-    ['Кг', weight],
-    ['Оціночна вартість', p['Оціночна вартість'] || ''],
-    ['Номер ТТН', ttn],
-    ['Внутрішній №', p['Внутрішній №'] || ''],
-    ['Статус посилки', statusPkg],
-    ['Сума', price ? price + ' ' + currency : ''],
-    ['Валюта оплати', currency],
-    ['Статус оплати', payStatus],
-    ['Фото посилки', p['Фото посилки'] || ''],
-    ['Рейтинг', p['Рейтинг'] || ''],
-    ['Коментар рейтингу', p['Коментар рейтингу'] || ''],
-  ], pkgId);
+  // 📦 Посилка (configurable)
+  const visParcel = getVisibleParcelColumns();
+  const allParcelFields = {
+    'description': ['Опис', p['Опис'] || ''],
+    'details': ['Деталі', p['Деталі'] || ''],
+    'qty': ['Кількість позицій', p['Кількість позицій'] || ''],
+    'weight': ['Кг', weight],
+    'estValue': ['Оціночна вартість', p['Оціночна вартість'] || ''],
+    'ttn': ['Номер ТТН', ttn],
+    'innerNum': ['Внутрішній №', p['Внутрішній №'] || ''],
+    'statusPkg': ['Статус посилки', statusPkg],
+    'sum': ['Сума', price ? price + ' ' + currency : ''],
+    'currency': ['Валюта оплати', currency],
+    'payStatus': ['Статус оплати', payStatus],
+    'photo': ['Фото посилки', p['Фото посилки'] || ''],
+    'rating': ['Рейтинг', p['Рейтинг'] || ''],
+    'ratingComment': ['Коментар рейтингу', p['Коментар рейтингу'] || ''],
+  };
+  const tabParcel = renderDetailGrid(visParcel.filter(k => allParcelFields[k]).map(k => allParcelFields[k]), pkgId);
 
-  // 📄 Основне
-  const tabBasic = renderDetailGrid([
-    ['Піб відправника', name],
-    ['Телефон реєстратора', phone],
-    ['Адреса відправки', addressFrom],
-    ['Піб отримувача', receiver],
-    ['Телефон отримувача', receiverPhone],
-    [isUE ? 'Адреса в Європі' : 'Місто Нова Пошта', addressTo],
-    ['Статус ліда', leadStatus],
-    ['Тег', tag],
-  ], pkgId);
+  // 📄 Основне (configurable)
+  const visOsn = getVisibleOsnovneColumns();
+  const allOsnovneFields = {
+    'sender': ['Піб відправника', name],
+    'phone': ['Телефон реєстратора', phone],
+    'addressFrom': ['Адреса відправки', addressFrom],
+    'receiver': ['Піб отримувача', receiver],
+    'phoneRecv': ['Телефон отримувача', receiverPhone],
+    'addressTo': [isUE ? 'Адреса в Європі' : 'Місто Нова Пошта', addressTo],
+    'leadStatus': ['Статус ліда', leadStatus],
+    'tag': ['Тег', tag],
+  };
+  const tabBasic = renderDetailGrid(visOsn.filter(k => allOsnovneFields[k]).map(k => allOsnovneFields[k]), pkgId);
 
   // 💰 НП (тільки для УК→ЄВ)
   const tabNP = isUE ? renderDetailGrid([
@@ -1837,12 +2203,12 @@ function renderCard(p) {
         <div class="card-top-row">
           <input type="checkbox" class="card-checkbox" onclick="event.stopPropagation(); toggleSelect('${pkgId}')" ${selectedIds.has(pkgId) ? 'checked' : ''}>
           <span class="dir-badge ${dirBadgeClass}">${dirLabel}</span>
-          ${ttnHtml}
-          ${weight ? `<span class="badge-weight">⚖️ ${weight} кг</span>` : ''}
+          ${visCols.includes('ttn') ? ttnHtml : ''}
+          ${visCols.includes('weight') && weight ? `<span class="badge-weight">⚖️ ${weight} кг</span>` : ''}
           <div class="card-finance">
-            ${price ? `<span class="card-price ${priceColorClass}">${price} ${currency}</span>` : ''}
-            ${deposit > 0 ? `<span class="card-deposit">завд:${deposit}</span>` : ''}
-            ${debt > 0 ? `<span class="card-debt">борг:${debt}</span>` : ''}
+            ${visCols.includes('sum') && price ? `<span class="card-price ${priceColorClass}">${price} ${currency}</span>` : ''}
+            ${visCols.includes('deposit') && deposit > 0 ? `<span class="card-deposit">завд:${deposit}</span>` : ''}
+            ${visCols.includes('debt') && debt > 0 ? `<span class="card-debt">борг:${debt}</span>` : ''}
           </div>
           <button class="card-actions-toggle" onclick="event.stopPropagation(); toggleActions('${pkgId}', this)" title="Дії">▼</button>
         </div>
@@ -1850,13 +2216,13 @@ function renderCard(p) {
           <div class="card-row2">
             <span class="card-pkgid">${pkgId}</span>
             <span class="card-sender-recv">👤 ${name || '—'} → ${receiver || '—'}</span>
-            ${leadBadge} ${payBadge} ${checkBadge}
+            ${visCols.includes('leadBadge') ? leadBadge : ''} ${visCols.includes('payBadge') ? payBadge : ''} ${visCols.includes('checkBadge') ? checkBadge : ''}
           </div>
-          ${addressTo ? `<div class="card-address">📍 ${addressFrom ? addressFrom + ' → ' : ''}${addressTo}</div>` : ''}
+          ${visCols.includes('address') && addressTo ? `<div class="card-address">📍 ${addressFrom ? addressFrom + ' → ' : ''}${addressTo}</div>` : ''}
           ${metaHtml ? `<div class="card-meta-tags">${metaHtml}</div>` : ''}
         </div>
       </div>
-      ${routeStrip}
+      ${visCols.includes('route') ? routeStrip : ''}
       <div class="card-actions" id="actions-${pkgId}">
         <button onclick="event.stopPropagation(); window.open('tel:${phone}')">📞 Дзвінок</button>
         <button onclick="event.stopPropagation(); openMessenger('${phone}')">💬 Писати</button>
