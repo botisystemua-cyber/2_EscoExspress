@@ -1005,9 +1005,10 @@ body {
   <div class="mob-item" onclick="setView('parcels')">📦 Посилки</div>
   <div class="mob-item" onclick="setView('passengers')">👤 Пасажири</div>
   <div class="mob-section-title">🔍 Перевірка</div>
-  <div class="mob-item" onclick="setFilter('all')">Всі</div>
+  <div class="mob-item active" onclick="setFilter('all')">Всі</div>
   <div class="mob-item" onclick="setFilter('checking')">В перевірці</div>
   <div class="mob-item" onclick="setFilter('ready')">Готові</div>
+  <div class="mob-item" onclick="setFilter('unknown')">Невідомі</div>
 </nav>
 
 <!-- ===== BULK ACTION MENU ===== -->
@@ -1588,9 +1589,13 @@ function filterData() {
     data = data.filter(p => p['Напрям'] === 'ЄВ→УК');
   }
 
-  // Status filter
-  if (currentFilter !== 'all') {
-    data = data.filter(p => p['Статус ліда'] === currentFilter);
+  // Verification / status filter
+  if (currentFilter === 'checking') {
+    data = data.filter(p => p['Контроль перевірки'] === 'В перевірці');
+  } else if (currentFilter === 'ready') {
+    data = data.filter(p => p['Контроль перевірки'] === 'Готова до маршруту');
+  } else if (currentFilter === 'unknown') {
+    data = data.filter(p => p['Статус ліда'] === 'Невідомий');
   }
 
   // Payment filter
@@ -2243,19 +2248,37 @@ function updateCounters() {
     setCount('countEu', eu.length);
     setCount('mobCountUe', ue.length);
     setCount('mobCountEu', eu.length);
-    setCount('countAll', active.length);
-    setCount('countChecking', active.filter(p => p['Контроль перевірки'] === 'В перевірці').length);
-    setCount('countReady', active.filter(p => p['Контроль перевірки'] === 'Готова до маршруту').length);
-    setCount('countUnknown', active.filter(p => p['Статус ліда'] === 'Невідомий').length);
+    const dirData = currentDirection === 'ue' ? ue : eu;
+    setCount('countAll', dirData.length);
+    setCount('countChecking', dirData.filter(p => p['Контроль перевірки'] === 'В перевірці').length);
+    setCount('countReady', dirData.filter(p => p['Контроль перевірки'] === 'Готова до маршруту').length);
+    setCount('countUnknown', dirData.filter(p => p['Статус ліда'] === 'Невідомий').length);
   } catch(e) { console.error('updateCounters error:', e); }
 }
 
 // ===== PLACEHOLDER FUNCTIONS =====
-function setFilter(f) { closeMobileSidebar(); }
+function setFilter(f) {
+  currentFilter = f;
+  // Update mobile sidebar active state
+  document.querySelectorAll('#mobileSidebar .mob-item').forEach(el => {
+    const onclickAttr = el.getAttribute('onclick') || '';
+    if (onclickAttr.includes('setFilter')) {
+      el.classList.toggle('active', onclickAttr.includes("'" + f + "'"));
+    }
+  });
+  renderCards();
+  updateCounters();
+  closeMobileSidebar();
+}
+
 function setVerFilter(f) {
+  currentFilter = f;
+  // Update desktop sidebar active state
   document.querySelectorAll('[data-filter]').forEach(el => {
     el.classList.toggle('active', el.dataset.filter === f);
   });
+  renderCards();
+  updateCounters();
 }
 // startEdit/saveEdit replaced by startInlineEdit/saveInlineEdit
 
