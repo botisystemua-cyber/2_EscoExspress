@@ -530,31 +530,108 @@ body {
 .detail-block-value .val-text { flex: 1; }
 .detail-block-value .val-empty { color: var(--text-secondary); font-style: italic; }
 
-/* Inline edit input & select */
-.detail-block-value input,
-.detail-block-value select {
+/* Inline edit input */
+.detail-block-value input {
   width: 100%; padding: 4px 8px;
   border: 2px solid var(--info); border-radius: 6px;
   font-size: 12px; font-family: inherit;
-  outline: none;
-  background: #fff;
+  outline: none; background: #fff;
   color: var(--text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.detail-block-value select {
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 24px;
-}
-.detail-block-value input:focus,
-.detail-block-value select:focus {
+.detail-block-value input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(26,58,94,0.15);
 }
+
+/* Custom dropdown */
+.inline-dropdown {
+  position: relative;
+  width: 100%;
+}
+.inline-dropdown-trigger {
+  width: 100%; padding: 5px 28px 5px 10px;
+  border: 2px solid var(--primary); border-radius: 8px;
+  font-size: 12px; font-family: inherit;
+  background: #fff; color: var(--text-primary);
+  cursor: pointer; text-align: left;
+  box-shadow: 0 0 0 3px rgba(26,58,94,0.1);
+  position: relative;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.inline-dropdown-trigger::after {
+  content: '';
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%) rotate(0deg);
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--primary);
+  transition: transform 0.2s;
+}
+.inline-dropdown.open .inline-dropdown-trigger::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+.inline-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px); left: 0; right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  max-height: 220px; overflow-y: auto;
+  z-index: 50;
+  padding: 4px;
+  opacity: 0; transform: translateY(-8px) scale(0.97);
+  animation: dropdownIn 0.2s ease-out forwards;
+}
+@keyframes dropdownIn {
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.inline-dropdown-item {
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  color: var(--text-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+.inline-dropdown-item:hover {
+  background: linear-gradient(135deg, #f0f4ff, #f5f0ff);
+}
+.inline-dropdown-item:active { transform: scale(0.98); }
+.inline-dropdown-item.selected {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+.inline-dropdown-item.selected:hover {
+  background: var(--primary-dark);
+}
+.inline-dropdown-item .dd-check {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: transparent;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.inline-dropdown-item.selected .dd-check {
+  background: #fff;
+  border-color: #fff;
+  color: var(--primary);
+}
+.inline-dropdown-item-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+/* Scrollbar for dropdown */
+.inline-dropdown-menu::-webkit-scrollbar { width: 4px; }
+.inline-dropdown-menu::-webkit-scrollbar-track { background: transparent; }
+.inline-dropdown-menu::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.inline-dropdown-menu::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
 /* ===== BOTTOM NAV ===== */
 .bottom-nav {
@@ -2313,7 +2390,7 @@ function getFieldOptions(col) {
 }
 
 function startInlineEdit(el, pkgId, col) {
-  if (el.querySelector('input') || el.querySelector('select')) return;
+  if (el.querySelector('input') || el.querySelector('.inline-dropdown')) return;
   const valEl = el.querySelector('.val-text, .val-empty');
   const currentVal = valEl && valEl.classList.contains('val-text') ? valEl.textContent.trim() : '';
   const options = getFieldOptions(col);
@@ -2321,34 +2398,74 @@ function startInlineEdit(el, pkgId, col) {
   el.innerHTML = '';
 
   if (options) {
-    // Dropdown select
-    const select = document.createElement('select');
-    // Empty option for clearing
-    const emptyOpt = document.createElement('option');
-    emptyOpt.value = '';
-    emptyOpt.textContent = '— Оберіть —';
-    select.appendChild(emptyOpt);
+    // Custom styled dropdown
+    const dd = document.createElement('div');
+    dd.className = 'inline-dropdown open';
+
+    const trigger = document.createElement('div');
+    trigger.className = 'inline-dropdown-trigger';
+    trigger.textContent = currentVal || '— Оберіть —';
+    if (!currentVal) trigger.style.color = 'var(--text-secondary)';
+    dd.appendChild(trigger);
+
+    const menu = document.createElement('div');
+    menu.className = 'inline-dropdown-menu';
+
+    // Clear option
+    const clearItem = document.createElement('div');
+    clearItem.className = 'inline-dropdown-item inline-dropdown-item-empty';
+    clearItem.innerHTML = '<span class="dd-check"></span> — Очистити —';
+    clearItem.onclick = function(e) {
+      e.stopPropagation();
+      closeInlineDropdown(el, pkgId, col, '');
+    };
+    menu.appendChild(clearItem);
 
     options.forEach(opt => {
-      const o = document.createElement('option');
-      o.value = opt;
-      o.textContent = opt;
-      if (opt === currentVal) o.selected = true;
-      select.appendChild(o);
+      if (opt === '') return;
+      const item = document.createElement('div');
+      const isSelected = opt === currentVal;
+      item.className = 'inline-dropdown-item' + (isSelected ? ' selected' : '');
+      item.innerHTML = `<span class="dd-check">${isSelected ? '✓' : ''}</span> ${opt}`;
+      item.onclick = function(e) {
+        e.stopPropagation();
+        closeInlineDropdown(el, pkgId, col, opt);
+      };
+      menu.appendChild(item);
     });
 
-    select.onchange = function() { saveInlineEdit(pkgId, col, select.value, el); };
-    select.onblur = function() {
-      setTimeout(() => {
-        if (!el.querySelector('select')) return;
+    dd.appendChild(menu);
+    el.appendChild(dd);
+
+    // Toggle on trigger click
+    trigger.onclick = function(e) {
+      e.stopPropagation();
+      dd.classList.toggle('open');
+    };
+
+    // Close on outside click
+    const closeHandler = function(e) {
+      if (!dd.contains(e.target)) {
+        document.removeEventListener('click', closeHandler);
         restoreBlock(el, currentVal, pkgId, col);
-      }, 150);
+      }
     };
-    select.onkeydown = function(e) {
-      if (e.key === 'Escape') restoreBlock(el, currentVal, pkgId, col);
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+
+    // Escape key
+    const keyHandler = function(e) {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', keyHandler);
+        document.removeEventListener('click', closeHandler);
+        restoreBlock(el, currentVal, pkgId, col);
+      }
     };
-    el.appendChild(select);
-    select.focus();
+    document.addEventListener('keydown', keyHandler);
+
+    // Scroll selected into view
+    const selectedEl = menu.querySelector('.selected');
+    if (selectedEl) setTimeout(() => selectedEl.scrollIntoView({ block: 'nearest' }), 50);
+
   } else {
     // Text input
     const input = document.createElement('input');
@@ -2362,6 +2479,10 @@ function startInlineEdit(el, pkgId, col) {
     el.appendChild(input);
     input.focus();
   }
+}
+
+function closeInlineDropdown(el, pkgId, col, value) {
+  saveInlineEdit(pkgId, col, value, el);
 }
 
 function saveInlineEdit(pkgId, col, value, el) {
