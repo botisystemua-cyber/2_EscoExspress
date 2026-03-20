@@ -3690,10 +3690,17 @@ function openDispatchView(idx) {
 function renderDispatchView(disp) {
   var cityName = disp.city || disp.sheetName;
 
+  // Count totals
+  var totalWeight = 0, totalSum = 0;
+  routeData.forEach(function(r) {
+    totalWeight += parseFloat(r['Вага']) || 0;
+    totalSum += parseFloat(r['Сума']) || 0;
+  });
+
   document.getElementById('routeHeader').innerHTML =
     '<div class="route-header-left">' +
       '<div class="route-header-title">📥 Відправка — ' + cityName + '</div>' +
-      '<div class="route-header-stats">📦 ' + routeData.length + ' записів</div>' +
+      '<div class="route-header-stats">📦 ' + routeData.length + ' записів · ⚖️ ' + totalWeight.toFixed(1) + ' кг · 💰 ' + totalSum + '</div>' +
     '</div>' +
     '<div class="route-header-actions">' +
       '<button onclick="refreshRouteView()">🔄 Оновити</button>' +
@@ -3703,22 +3710,33 @@ function renderDispatchView(disp) {
   document.getElementById('routeFilters').innerHTML = '';
 
   var html = '<table class="route-table"><thead><tr>' +
-    '<th>Дата</th><th>Водій</th><th>Відправник</th><th>Отримувач</th><th>Адреса</th><th>Вага</th><th>Сума</th><th>Борг</th><th>Оплата</th>' +
+    '<th>Дата оформлення</th><th>Внутрішній №</th><th>Відправник</th><th>Тел. відправника</th>' +
+    '<th>Отримувач</th><th>Тел. отримувача</th><th>Адреса</th>' +
+    '<th>Опис</th><th>Вага</th><th>Сума</th><th>Завдаток</th><th>Борг</th><th>Оплата</th><th>Статус</th>' +
   '</tr></thead><tbody>';
 
   routeData.forEach(function(r, i) {
     var pay = r['Статус оплати'] || '';
     var payColor = pay === 'Оплачено' ? '#22c55e' : pay === 'Частково' ? '#fbbf24' : '#ef4444';
+    var status = r['Статус'] || '';
+    var statusColor = status === 'Доставлено' ? '#22c55e' : status === 'В дорозі' ? '#3b82f6' : '#94a3b8';
+    var desc = r['Опис посилки'] || '';
+
     html += '<tr onclick="openDispatchDetail(' + i + ')">' +
-      '<td>' + (r['Дата рейсу'] || '—') + '</td>' +
-      '<td>' + (r['Водій'] || '—') + '</td>' +
+      '<td style="white-space:nowrap;font-size:11px;">' + (r['Дата створення'] || '—') + '</td>' +
+      '<td style="font-weight:600;">' + (r['Внутрішній №'] || '—') + '</td>' +
       '<td>' + (r['Піб відправника'] || '—') + '</td>' +
+      '<td style="font-size:11px;">' + (r['Телефон відправника'] || '—') + '</td>' +
       '<td>' + (r['Піб отримувача'] || '—') + '</td>' +
-      '<td title="' + (r['Адреса отримувача'] || '') + '">' + ((r['Адреса отримувача'] || '').substring(0, 25) || '—') + '</td>' +
+      '<td style="font-size:11px;">' + (r['Телефон отримувача'] || '—') + '</td>' +
+      '<td title="' + (r['Адреса отримувача'] || '') + '">' + ((r['Адреса отримувача'] || '').substring(0, 20) || '—') + '</td>' +
+      '<td title="' + desc + '">' + (desc.substring(0, 20) || '—') + (desc.length > 20 ? '...' : '') + '</td>' +
       '<td>' + (r['Вага'] || '—') + '</td>' +
       '<td>' + (r['Сума'] || '—') + ' ' + (r['Валюта'] || '') + '</td>' +
-      '<td>' + (r['Борг'] || '—') + '</td>' +
+      '<td>' + (r['Завдаток'] || '—') + '</td>' +
+      '<td style="font-weight:600;color:#ef4444;">' + (r['Борг'] || '—') + '</td>' +
       '<td><span class="route-status-badge" style="background:' + payColor + '20;color:' + payColor + '">' + (pay || '—') + '</span></td>' +
+      '<td><span class="route-status-badge" style="background:' + statusColor + '20;color:' + statusColor + '">' + (status || '—') + '</span></td>' +
     '</tr>';
   });
 
@@ -3741,28 +3759,34 @@ function openDispatchDetail(idx) {
 
   var html = '<div class="route-detail-panel">' +
     '<button class="detail-close" onclick="closeRouteDetail()">✕</button>' +
-    '<h3>📥 Відправка</h3>';
-  html += renderRouteDetailSection('Основне', [
-    ['Відправник', r['Піб відправника']], ['Отримувач', r['Піб отримувача']],
-    ['Телефон відправника', r['Телефон відправника']], ['Телефон отримувача', r['Телефон отримувача']],
-    ['Адреса', r['Адреса отримувача']]
+    '<h3>📥 Відправка <span style="font-size:12px;font-weight:400;color:var(--text-secondary);">' + (r['DISPATCH_ID'] || '') + '</span></h3>';
+  html += renderRouteDetailSection('Відправник', [
+    ['Піб відправника', r['Піб відправника']], ['Телефон відправника', r['Телефон відправника']],
+    ['CLI_ID', r['CLI_ID']], ['ID_смарт клієнта', r['ID_смарт клієнта']]
+  ]);
+  html += renderRouteDetailSection('Отримувач', [
+    ['Піб отримувача', r['Піб отримувача']], ['Телефон отримувача', r['Телефон отримувача']],
+    ['Адреса отримувача', r['Адреса отримувача']]
   ]);
   html += renderRouteDetailSection('Посилка', [
     ['Внутрішній №', r['Внутрішній №']], ['Вага', r['Вага']],
-    ['Опис', r['Опис посилки']], ['Фото', r['Фото посилки'] ? '<a href="' + r['Фото посилки'] + '" target="_blank">Переглянути</a>' : '']
+    ['Опис посилки', r['Опис посилки']],
+    ['Фото', r['Фото посилки'] ? '<a href="' + r['Фото посилки'] + '" target="_blank" style="color:var(--info);">📷 Переглянути</a>' : '']
   ]);
   html += renderRouteDetailSection('Фінанси', [
     ['Сума', r['Сума']], ['Валюта', r['Валюта']],
-    ['Завдаток', r['Завдаток']], ['Борг', r['Борг']],
-    ['Форма оплати', r['Форма оплати']], ['Статус оплати', r['Статус оплати']]
+    ['Завдаток', r['Завдаток']], ['Валюта завдатку', r['Валюта завдатку']],
+    ['Форма оплати', r['Форма оплати']], ['Статус оплати', r['Статус оплати']],
+    ['Борг', r['Борг']]
   ]);
   html += renderRouteDetailSection('Рейс', [
-    ['Дата рейсу', r['Дата рейсу']], ['Водій', r['Водій']],
-    ['Номер авто', r['Номер авто']], ['RTE_ID', r['RTE_ID']]
+    ['Дата створення', r['Дата створення']], ['Дата рейсу', r['Дата рейсу']],
+    ['Водій', r['Водій']], ['Номер авто', r['Номер авто']],
+    ['AUTO_ID', r['AUTO_ID']], ['RTE_ID', r['RTE_ID']]
   ]);
   html += renderRouteDetailSection('Системні', [
     ['DISPATCH_ID', r['DISPATCH_ID']], ['PKG_ID', r['PKG_ID']],
-    ['CLI_ID', r['CLI_ID']]
+    ['Статус', r['Статус']], ['Примітка', r['Примітка']]
   ]);
   html += '</div>';
   overlay.innerHTML = html;
