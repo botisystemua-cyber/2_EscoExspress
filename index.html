@@ -2405,7 +2405,7 @@ function renderCard(p) {
             <span class="card-sender-recv">👤 ${name || '—'} → ${receiver || '—'}</span>
             ${visCols.includes('leadBadge') ? leadBadge : ''} ${visCols.includes('payBadge') ? payBadge : ''} ${visCols.includes('checkBadge') ? checkBadge : ''}
           </div>
-          ${visCols.includes('address') && addressTo ? `<div class="card-address">📍 ${addressFrom ? addressFrom + ' → ' : ''}${addressTo}</div>` : ''}
+          ${visCols.includes('address') && (addressFrom || addressTo) ? `<div class="card-address">📍 ${addressFrom && addressTo ? addressFrom + ' → ' + addressTo : (addressFrom || addressTo)}</div>` : ''}
           ${metaHtml ? `<div class="card-meta-tags">${metaHtml}</div>` : ''}
         </div>
       </div>
@@ -3353,7 +3353,7 @@ function renderArchiveCard(p) {
           '<span class="badge" style="background:#fee2e2;color:#991b1b;">Архів</span>' +
           leadBadge + ' ' + payBadge +
         '</div>' +
-        (addressTo ? '<div class="card-address">📍 ' + (addressFrom ? addressFrom + ' → ' : '') + addressTo + '</div>' : '') +
+        ((addressFrom || addressTo) ? '<div class="card-address">📍 ' + (addressFrom && addressTo ? addressFrom + ' → ' + addressTo : (addressFrom || addressTo)) + '</div>' : '') +
         '<div class="card-meta-tags">' +
           (dateCreated ? '<span class="meta-tag">📅 ' + dateCreated + '</span>' : '') +
           (dateArchive ? '<span class="meta-tag" style="color:#991b1b;">🗄️ ' + dateArchive + '</span>' : '') +
