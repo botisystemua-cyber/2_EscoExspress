@@ -615,6 +615,40 @@ body {
 .qe-dropdown-item.active:hover {
   background: var(--primary-dark);
 }
+
+/* Address combo (inline edit) */
+.qe-address-combo { position: relative; width: 100%; }
+.qe-address-input {
+  width: 100%; padding: 7px 10px;
+  border: 1.5px solid var(--primary); border-radius: 8px;
+  font-size: 12px; font-family: inherit;
+  background: #fff; color: var(--text-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(26,58,94,0.10);
+}
+.qe-address-input::placeholder { color: #aab; font-style: italic; }
+.qe-address-suggestions {
+  position: absolute; top: 100%; left: 0; right: 0;
+  z-index: 9999;
+  background: #fff;
+  border: 1.5px solid var(--primary); border-top: none;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  max-height: 0; overflow: hidden; opacity: 0;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+.qe-address-suggestions.open {
+  max-height: 200px; overflow-y: auto; opacity: 1;
+}
+.qe-address-suggest-item {
+  padding: 8px 12px; font-size: 12px;
+  cursor: pointer; color: var(--text-primary);
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.12s;
+}
+.qe-address-suggest-item:last-child { border-bottom: none; }
+.qe-address-suggest-item:hover { background: linear-gradient(135deg, #f0f4ff, #f5f0ff); }
+.qe-address-suggest-item.active { background: var(--primary); color: #fff; font-weight: 600; }
 .qe-dropdown-item .dd-icon {
   width: 18px; height: 18px;
   border-radius: 5px;
@@ -835,13 +869,13 @@ body {
 }
 
 .add-swiss-dropdown {
-  margin-bottom: 8px;
+  margin-top: 6px;
 }
 .add-swiss-btn {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 6px 10px; border-radius: 6px;
-  border: 1px solid #e2e8f0; background: #f8fafc;
-  font-size: 11px; font-weight: 600; color: var(--info);
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px dashed #cbd5e1; background: transparent;
+  font-size: 10px; font-weight: 500; color: var(--text-secondary);
   cursor: pointer; transition: all 0.2s;
 }
 .add-swiss-btn:hover { background: #eff6ff; }
@@ -1491,11 +1525,11 @@ body {
             </div>
             <div class="add-row">
               <label>Адреса відправника <span class="req">*</span></label>
+              <input type="text" id="fAddressFrom" placeholder="Введіть адресу вручну" autocomplete="off">
               <div class="add-swiss-dropdown" id="swissDropdownSender">
-                <button type="button" class="add-swiss-btn" onclick="toggleSwissList('sender')">🇨🇭 Наші точки ▼</button>
+                <button type="button" class="add-swiss-btn" onclick="toggleSwissList('sender')">📍 Або оберіть нашу точку ▼</button>
                 <div class="add-swiss-list" id="swissListSender"></div>
               </div>
-              <input type="text" id="fAddressFrom" placeholder="Адреса в Європі">
             </div>
             <div class="add-row-grid">
               <div class="add-row">
@@ -1573,11 +1607,11 @@ body {
             </div>
             <div class="add-row">
               <label>Адреса в Європі <span class="req">*</span></label>
+              <input type="text" id="fAddressTo" placeholder="Введіть адресу вручну" autocomplete="off">
               <div class="add-swiss-dropdown" id="swissDropdownReceiver">
-                <button type="button" class="add-swiss-btn" onclick="toggleSwissList('receiver')">🇨🇭 Наші точки ▼</button>
+                <button type="button" class="add-swiss-btn" onclick="toggleSwissList('receiver')">📍 Або оберіть нашу точку ▼</button>
                 <div class="add-swiss-list" id="swissListReceiver"></div>
               </div>
-              <input type="text" id="fAddressTo" placeholder="Адреса в Європі">
             </div>
             <div class="add-row">
               <label>Номер ТТН</label>
@@ -2452,6 +2486,10 @@ function getFieldOptions(col) {
   return opts[col] || null;
 }
 
+function _isAddressField(col) {
+  return col === 'Адреса відправки' || col === 'Адреса в Європі';
+}
+
 function startInlineEdit(el, pkgId, col) {
   // If dropdown or input already exists — skip
   if (el.querySelector('.qe-dropdown-wrap') || el.querySelector('input')) return;
@@ -2462,7 +2500,9 @@ function startInlineEdit(el, pkgId, col) {
 
   el.innerHTML = '';
 
-  if (options) {
+  if (_isAddressField(col)) {
+    _createAddressCombo(el, pkgId, col, currentVal, options || []);
+  } else if (options) {
     _createQeDropdown(el, pkgId, col, currentVal, options);
   } else {
     const input = document.createElement('input');
@@ -2476,6 +2516,70 @@ function startInlineEdit(el, pkgId, col) {
     el.appendChild(input);
     input.focus();
   }
+}
+
+function _createAddressCombo(el, pkgId, col, currentVal, suggestions) {
+  const wrap = document.createElement('div');
+  wrap.className = 'qe-address-combo';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'qe-address-input';
+  input.value = currentVal;
+  input.placeholder = 'Введіть адресу або оберіть точку';
+  wrap.appendChild(input);
+
+  const list = document.createElement('div');
+  list.className = 'qe-address-suggestions';
+
+  function renderSuggestions(filter) {
+    list.innerHTML = '';
+    const q = (filter || '').toLowerCase();
+    const filtered = suggestions.filter(s => !q || s.toLowerCase().includes(q));
+    if (filtered.length === 0) { list.classList.remove('open'); return; }
+    filtered.forEach(function(opt) {
+      const item = document.createElement('div');
+      item.className = 'qe-address-suggest-item' + (opt === input.value ? ' active' : '');
+      item.textContent = opt;
+      item.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        input.value = opt;
+        list.classList.remove('open');
+        _comboCleanup();
+        saveInlineEdit(pkgId, col, opt, el);
+      });
+      list.appendChild(item);
+    });
+    list.classList.add('open');
+  }
+
+  wrap.appendChild(list);
+  el.appendChild(wrap);
+
+  // Show suggestions on focus
+  input.addEventListener('focus', function() { renderSuggestions(input.value); });
+  input.addEventListener('input', function() { renderSuggestions(input.value); });
+  input.addEventListener('blur', function() {
+    list.classList.remove('open');
+    _comboCleanup();
+    saveInlineEdit(pkgId, col, input.value.trim(), el);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { _comboCleanup(); restoreBlock(el, currentVal, pkgId, col); }
+  });
+
+  // Overflow fix
+  const cardDetails = el.closest('.card-details');
+  const tabPanel = el.closest('.detail-tab-panel');
+  if (cardDetails) cardDetails.classList.add('editing-active');
+  if (tabPanel) tabPanel.classList.add('editing-active');
+
+  function _comboCleanup() {
+    document.querySelectorAll('.editing-active').forEach(function(e) { e.classList.remove('editing-active'); });
+  }
+
+  input.focus();
 }
 
 function _createQeDropdown(el, pkgId, col, currentVal, options) {
