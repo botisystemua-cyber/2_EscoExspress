@@ -847,32 +847,26 @@ function mockApi(action, params) {
   ];
 
   switch (action) {
-    case 'getPassengers':
+    case 'getAll':
       return { ok: true, data: MOCK_PASSENGERS.map(gasToFrontend), count: MOCK_PASSENGERS.length };
-    case 'getPassengerStats':
-      return { ok: true, stats: { total: 6, ue: 4, eu: 2, byStatus: { 'Новий': 1, 'В роботі': 2, 'Підтверджено': 2, 'Відмова': 1 }, byPay: { 'Оплачено': 3, 'Частково': 2, 'Не оплачено': 1 }, totalDebt: 3900, totalSeats: 8 } };
-    case 'addPassenger':
-      return { ok: true, pax_id: 'PAX_NEW_' + Date.now() };
-    case 'updatePassengerField':
+    case 'getStats':
+      return { ok: true, stats: { total: 6, ue: 4, eu: 2, byStatus: { 'Новий': 1, 'В роботі': 2, 'Підтверджено': 2, 'Відмова': 1 }, byPay: { 'Оплачено': 3, 'Частково': 2, 'Не оплачено': 1 }, totalDebt: 3900 } };
+    case 'addParcel':
+      return { ok: true, pkg_id: 'PKG_NEW_' + Date.now() };
+    case 'updateField':
       return { ok: true };
-    case 'deletePassenger':
+    case 'deleteParcel':
       return { ok: true };
+    case 'getRoutesList':
+      return { ok: true, routes: [] };
     default:
       return { ok: true, data: [] };
   }
 }
 
-const MOCK_ROUTES = [
-  { sheetName: 'Маршрут_Цюріх', rowCount: 5, paxCount: 2, parcelCount: 3, rows: null },
-  { sheetName: 'Маршрут_Берлін', rowCount: 3, paxCount: 1, parcelCount: 2, rows: null },
-  { sheetName: 'Маршрут_Варшава', rowCount: 4, paxCount: 2, parcelCount: 2, rows: null }
-];
-
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async function() {
   await loadData();
-  routes = MOCK_ROUTES;
-  renderRouteSidebar();
 });
 
 // ===== FILTERING =====
@@ -1220,7 +1214,7 @@ async function deleteRecord(pkgId) {
   if (item) item['Статус CRM'] = 'Архів';
   renderCards();
 
-  const res = await apiPost('deletePassenger', { pax_id: pkgId });
+  const res = await apiPost('deleteParcel', { pkg_id: pkgId });
   if (res.ok) showToast('Запис архівовано', 'success');
 }
 
@@ -1232,25 +1226,30 @@ async function loadData() {
   isLoading = true;
   document.getElementById('cardsList').innerHTML = '<div class="empty-state">⏳ Завантаження...</div>';
 
-  const [paxRes, statsRes] = await Promise.all([
-    apiPost('getPassengers', { direction: 'all', filter: {} }),
-    apiPost('getPassengerStats', {})
+  const [parcelsRes, statsRes, routesRes] = await Promise.all([
+    apiPost('getAll', { sheet: 'all', filter: {} }),
+    apiPost('getStats', {}),
+    apiPost('getRoutesList', {})
   ]);
 
-  if (paxRes.ok) {
-    allData = paxRes.data || [];
-    // Ensure all records have type
-    allData.forEach(p => { if (!p['Тип запису']) p['Тип запису'] = 'Пасажир'; });
+  if (parcelsRes.ok) {
+    allData = parcelsRes.data || [];
+    allData.forEach(p => { if (!p['Тип запису']) p['Тип запису'] = 'Посилка'; });
   }
 
   if (statsRes.ok) {
     stats = statsRes.stats || {};
   }
 
+  if (routesRes.ok && routesRes.routes) {
+    routes = routesRes.routes;
+    renderRouteSidebar();
+  }
+
   isLoading = false;
   renderCards();
   updateCounters();
-  showToast('Дані оновлено (' + allData.length + ' пасажирів)', 'success');
+  showToast('Дані оновлено (' + allData.length + ' посилок)', 'success');
 }
 </script>
 </body>
