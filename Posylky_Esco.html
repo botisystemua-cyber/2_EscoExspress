@@ -5830,23 +5830,26 @@ async function loadData() {
       stats = statsRes.stats || {};
     }
 
-    if (routesRes.ok) {
+    if (routesRes && routesRes.ok) {
       routes = routesRes.routes || routesRes.data || [];
       dispatches = routesRes.dispatches || [];
       expenses = routesRes.expenses || [];
       routeSummary = routesRes.summary || null;
-      renderRouteSidebar();
+      try { renderRouteSidebar(); } catch(e) { console.warn('renderRouteSidebar:', e); }
     }
-
-    renderCards();
-    updateCounters();
-    showToast('Дані оновлено (' + allData.length + ' посилок)', 'success');
   } catch (err) {
     console.error('loadData error:', err);
-    showToast('Помилка завантаження: ' + err.message, 'error');
   } finally {
     isLoading = false;
     hideLoader();
+  }
+
+  try {
+    renderCards();
+    updateCounters();
+    showToast('Дані оновлено (' + allData.length + ' посилок)', 'success');
+  } catch(e) {
+    console.error('render error:', e);
   }
 }
 </script>
