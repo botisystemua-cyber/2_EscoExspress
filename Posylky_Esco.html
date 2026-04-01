@@ -3757,6 +3757,7 @@ function closeMessengerPopup() { var el = document.getElementById('messengerOver
 function promptDeleteLinkedSheets(baseName) { if (activeRouteIdx !== null) activeRouteIdx = null; loadRoutes(); }
 function setCount(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
 function refreshRouteView() { if (activeRouteIdx !== null) openRoute(activeRouteIdx, true); }
+function openRouteView(idx) { openRoute(idx); }
 function archiveFromRoute(rteId, sheetName, name) { deleteFromRoute(rteId, sheetName, name); }
 function routeBulkArchive() { routeBulkDeleteFromRoute(); }
 function routeBulkDeleteFull() { routeBulkDeleteFromRoute(); }
