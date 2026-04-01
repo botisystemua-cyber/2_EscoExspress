@@ -586,7 +586,7 @@ body {
   <div class="mob-item" onclick="setDirection('eu')">🇪🇺 Європа → УК <span class="badge-count" id="mobCountEu">0</span></div>
   <div class="mob-section-title">📋 Вид</div>
   <div class="mob-item" onclick="setView('parcels')">📦 Посилки</div>
-  <div class="mob-item" onclick="setView('passengers')">👤 Пасажири</div>
+  <div class="mob-item" onclick="window.location.href=PASAZHYRY_URL">👤 Пасажири</div>
   <div class="mob-section-title">🔍 Перевірка</div>
   <div class="mob-item" onclick="setFilter('all')">Всі</div>
   <div class="mob-item" onclick="setFilter('checking')">В перевірці</div>
@@ -661,7 +661,7 @@ body {
     <button class="bottom-nav-item active" onclick="setView('parcels')">
       <span class="nav-icon">📦</span> Посилки
     </button>
-    <button class="bottom-nav-item" onclick="setView('passengers')">
+    <button class="bottom-nav-item" onclick="window.location.href=PASAZHYRY_URL">
       <span class="nav-icon">👤</span> Пасажири
     </button>
     <button class="bottom-nav-item" onclick="loadData()">
@@ -683,6 +683,7 @@ body {
 // ===== КОНФІГУРАЦІЯ =====
 // Замініть на реальний URL після Deploy GAS → Web App
 const GAS_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
+const PASAZHYRY_URL = 'https://botisystem.com/Esco_Express/index.html';
 const USE_MOCK = !GAS_URL || GAS_URL.includes('YOUR_GAS');
 
 // ===== GLOBAL STATE =====
