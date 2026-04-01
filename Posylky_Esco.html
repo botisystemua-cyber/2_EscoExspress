@@ -1184,7 +1184,7 @@ async function saveEdit(pkgId, col, value, span) {
   span.innerHTML = `${value || '—'} <button class="edit-btn" onclick="event.stopPropagation(); startEdit(this, '${pkgId}', '${col}')">✏️</button>`;
 
   // Send to GAS
-  const res = await apiPost('updatePassengerField', { pax_id: pkgId, col, value });
+  const res = await apiPost('updateField', { pkg_id: pkgId, col, value });
   if (res.ok) showToast('Збережено', 'success');
 }
 
