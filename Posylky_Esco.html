@@ -3855,67 +3855,6 @@ const ROUTE_DISPLAY_COLS = [
     'Адреса прибуття', 'Сума', 'Валюта', 'Статус оплати', 'Статус'
 ];
 
-// ── Рендер списку маршрутів в сайдбарах ──
-function renderRouteSidebar() {
-    // Ховаємо лоадер
-    const pcLoading = document.getElementById('pcRoutesLoading');
-    if (pcLoading) pcLoading.style.display = 'none';
-
-    // Рахуємо лічильники один раз і зберігаємо
-    routes.forEach(function(sheet) {
-        if (sheet.rows !== null) {
-            sheet.paxCount = sheet.rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
-            sheet.parcelCount = sheet.rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length;
-        }
-    });
-
-    // PC sidebar
-    const pcList = document.getElementById('pcRoutesList');
-    if (pcList) {
-        if (routes.length === 0) {
-            pcList.innerHTML = '<div style="padding:10px 14px;font-size:11px;color:var(--text-secondary);">Немає маршрутів</div>';
-        } else {
-            pcList.innerHTML = routes.map((sheet, idx) => {
-                const name = (sheet.sheetName || '').replace('Маршрут_', '');
-                const isActive = activeRouteIdx === idx && currentView === 'routes';
-                const pax = sheet.paxCount || 0;
-                const parcels = sheet.parcelCount || 0;
-                const countLabel = '👤<span style="color:#d97706;font-weight:800;">' + pax + '</span> 📦<span style="color:#d97706;font-weight:800;">' + parcels + '</span>';
-                return `<div class="pc-sidebar-item route-sidebar-item${isActive ? ' active' : ''}" onclick="openRoute(${idx})" style="position:relative;">
-                    <span>
-                        <span class="item-icon">🗺️</span>
-                        <span class="item-text">${name}</span>
-                    </span>
-                    <span style="display:flex;align-items:center;gap:4px;">
-                        <span class="item-count" style="font-size:9px;">${countLabel}</span>
-                        <button class="route-delete-btn" onclick="event.stopPropagation(); confirmDeleteRoute(${idx})" title="Видалити маршрут">✕</button>
-                    </span>
-                </div>`;
-            }).join('');
-        }
-    }
-    // Mobile sidebar
-    const mobList = document.getElementById('mobileRoutesList');
-    if (mobList) {
-        if (routes.length === 0) {
-            mobList.innerHTML = '<div style="padding:8px 14px;font-size:11px;color:rgba(255,255,255,0.5);">Немає маршрутів</div>';
-        } else {
-            mobList.innerHTML = routes.map((sheet, idx) => {
-                const name = (sheet.sheetName || '').replace('Маршрут_', '');
-                const pax = sheet.paxCount || 0;
-                const parcels = sheet.parcelCount || 0;
-                const countLabel = '👤<span style="color:#fbbf24;font-weight:800;">' + pax + '</span> 📦<span style="color:#fbbf24;font-weight:800;">' + parcels + '</span>';
-                return `<div class="side-menu-item" onclick="openRoute(${idx}); closeSideMenu();" style="padding:8px 14px;font-size:12px;">
-                    <span class="side-menu-item-left">🗺️ ${name}</span>
-                    <span style="font-size:10px;letter-spacing:0.5px;">${countLabel}</span>
-                </div>`;
-            }).join('') + `<div class="side-menu-item" onclick="promptCreateRoute(); closeSideMenu();" style="color:#7c3aed;padding:8px 14px;font-size:12px;">
-                <span class="side-menu-item-left">➕ Новий маршрут</span>
-            </div>`;
-        }
-    }
-}
-
 function toggleMobileRoutesList() {
     toggleMobileSection('routes');
 }
