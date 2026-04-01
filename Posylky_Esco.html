@@ -3921,7 +3921,6 @@ function toggleMobileRoutesList() {
 }
 
 // ── Відкрити конкретний маршрут ──
-var _routeForceRefresh = false;
 async function openRoute(idx, forceRefresh) {
     activeRouteIdx = idx;
     // Одразу підсвітити активний маршрут в sidebar
@@ -4228,7 +4227,6 @@ function toggleRouteSelect(rteId, checked) {
     const card = document.getElementById('rte-card-' + rteId);
     if (card) card.classList.toggle('selected', checked);
 }
-var _routeToolbarForceOpen = false;
 
 function toggleRouteSelectAll() {
     const sheet = routes[activeRouteIdx];
