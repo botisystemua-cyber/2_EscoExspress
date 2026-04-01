@@ -3782,9 +3782,10 @@ async function loadRoutes(forceRefresh) {
         // ШВИДКИЙ запит: тільки імена аркушів + кількість рядків
         const res = await apiPost('getRoutesList', { forceRefresh: !!forceRefresh });
         loading.style.display = 'none';
-        if (res.ok && res.data) {
+        var routeList = res.routes || res.data || [];
+        if (res.ok && routeList.length) {
             // Зберігаємо список аркушів (rows ще не завантажені)
-            allRouteSheets = res.data.map(s => ({
+            allRouteSheets = routeList.map(s => ({
                 sheetName: s.sheetName,
                 rowCount: s.rowCount,
                 paxCount: s.paxCount || 0,
