@@ -3793,15 +3793,18 @@ async function loadRoutes(forceRefresh) {
             // Зберігаємо список аркушів (rows ще не завантажені)
             allRouteSheets = routeList.map(s => ({
                 sheetName: s.sheetName,
+                city: s.city || s.sheetName.replace(/^Маршрут_/, ''),
                 rowCount: s.rowCount,
                 paxCount: s.paxCount || 0,
                 parcelCount: s.parcelCount || 0,
                 headers: [],
                 rows: null // null = ще не завантажено
             }));
+            // Бекенд вже категоризує: routes/dispatches/expenses
+            // Аркуші можуть називатися "Цюріх" або "Маршрут_Цюріх"
             routes = allRouteSheets.filter(s => {
                 const n = (s.sheetName || '');
-                return n.startsWith('Маршрут_') && n !== 'Маршрут_Шаблон';
+                return n !== 'Маршрут_Шаблон' && n !== 'Взірець';
             });
             setCount('pcCountRoutes', routes.length);
             setCount('mobileCountRoutes', routes.length);
