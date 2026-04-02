@@ -3600,17 +3600,19 @@ function setDirection(dir) {
   document.querySelectorAll('#mobileSidebar [data-dir]').forEach(el => {
     el.className = 'mob-item' + (el.dataset.dir === dir ? (dir === 'ue' ? ' active-ue' : ' active-eu') : '');
   });
-  renderCards();
+  // Switch back to parcels view if in route/other view
+  if (currentView !== 'parcels') backToParcels();
+  else renderCards();
   closeMobileSidebar();
 }
 
 function setView(view) {
-  currentView = view;
   // Update bottom nav
   document.querySelectorAll('.bottom-nav-item').forEach((el, i) => {
     el.classList.toggle('active', (view === 'parcels' && i === 0) || (view === 'passengers' && i === 1));
   });
-  renderCards();
+  if (view === 'parcels' && currentView !== 'parcels') backToParcels();
+  else { currentView = view; renderCards(); }
   closeMobileSidebar();
 }
 
@@ -5155,7 +5157,9 @@ function setVerFilter(f) {
   document.querySelectorAll('#mobileSidebar [data-mfilter]').forEach(el => {
     el.classList.toggle('active', el.dataset.mfilter === f);
   });
-  renderCards();
+  // Switch back to parcels view if in route/other view
+  if (currentView !== 'parcels') backToParcels();
+  else renderCards();
   updateCounters();
 }
 // startEdit/saveEdit replaced by startInlineEdit/saveInlineEdit
