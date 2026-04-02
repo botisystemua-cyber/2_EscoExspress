@@ -3564,21 +3564,86 @@ function bulkSetVerifyStatus(status) {
   afterBulkAction();
 }
 
-// Stub: В маршрут
+// Масове додавання в маршрут
 function bulkAddToRoute() {
   const ids = getSelectedIds();
   if (ids.length === 0) return;
-  console.log('bulkAddToRoute:', ids);
-  showToast(`В маршрут: ${ids.length} посилок (заглушка)`, 'info');
-  // Не скидаємо виділення — тут буде вибір рейсу
+  if (routes.length === 0) {
+    showToast('Маршрути не завантажені', 'error');
+    return;
+  }
+
+  var html = '<div style="padding:20px;max-width:400px;">' +
+    '<h3 style="margin-bottom:4px;">🚖 Обрати маршрут</h3>' +
+    '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Додати ' + ids.length + ' посилок в маршрут:</div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px;">';
+  routes.forEach(function(r, i) {
+    html += '<button onclick="bulkAssignToRoute(' + i + ')" style="padding:10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;text-align:left;font-family:inherit;transition:all 0.15s;"' +
+      ' onmouseover="this.style.borderColor=\'var(--primary)\';this.style.background=\'#f0f9ff\'"' +
+      ' onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'#fff\'">' +
+      (r.city || r.sheetName) + ' <span style="color:var(--text-secondary);font-size:11px;">👤' + (r.paxCount||0) + ' 📦' + (r.parcelCount||0) + '</span></button>';
+  });
+  html += '</div></div>';
+
+  var overlay = document.getElementById('routeDetailOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'routeDetailOverlay';
+    overlay.className = 'route-detail-overlay';
+    overlay.onclick = function(e) { if (e.target === overlay) closeRouteDetail(); };
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = '<div class="route-detail-panel">' +
+    '<button class="detail-close" onclick="closeRouteDetail()">✕</button>' + html + '</div>';
+  overlay.classList.add('open');
 }
 
-// Stub: Видалити з маршруту
-function bulkRemoveFromRoute() {
+async function bulkAssignToRoute(routeIdx) {
+  var route = routes[routeIdx];
+  var ids = getSelectedIds();
+  closeRouteDetail();
+  showToast('Додаємо ' + ids.length + ' записів в ' + (route.city || route.sheetName) + '...', 'info');
+
+  var success = 0, fail = 0;
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      var res = await apiPost('addToRoute', {
+        pkg_id: ids[i],
+        sheet_name: route.sheetName,
+        rte_id: route.sheetName
+      });
+      if (res.ok) {
+        success++;
+        var item = allData.find(function(p) { return p['PKG_ID'] === ids[i]; });
+        if (item) item['RTE_ID'] = route.sheetName;
+      } else { fail++; }
+    } catch(e) { fail++; }
+  }
+
+  showToast('Додано в ' + (route.city || route.sheetName) + ': ' + success + ' з ' + ids.length, success > 0 ? 'success' : 'error');
+  afterBulkAction();
+}
+
+// Видалити з маршруту
+async function bulkRemoveFromRoute() {
   const ids = getSelectedIds();
   if (ids.length === 0) return;
-  console.log('bulkRemoveFromRoute:', ids);
-  showToast(`Видалено з маршруту: ${ids.length} (заглушка)`, 'info');
+  if (!confirm('Видалити ' + ids.length + ' записів з маршруту?')) return;
+
+  var success = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var item = allData.find(function(p) { return p['PKG_ID'] === ids[i]; });
+    var rteId = item ? item['RTE_ID'] : '';
+    if (!rteId) continue;
+    try {
+      var res = await apiPost('removeFromRoute', { pkg_id: ids[i], rte_id: rteId });
+      if (res.ok) {
+        success++;
+        if (item) item['RTE_ID'] = '';
+      }
+    } catch(e) {}
+  }
+  showToast('Видалено з маршруту: ' + success, success > 0 ? 'success' : 'error');
   afterBulkAction();
 }
 
@@ -5181,7 +5246,7 @@ function openMessenger(phone) {
   menu.addEventListener('click', e => { if (e.target === menu) menu.remove(); });
 }
 
-function openRouteModal(pkgId) { alert('Вибір маршруту для ' + pkgId); }
+// openRouteModal defined in SECT-ROUTE-MODAL above
 
 // ===== [SECT-ARCHIVE] ARCHIVE SYSTEM =====
 
