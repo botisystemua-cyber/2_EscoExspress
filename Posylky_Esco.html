@@ -316,18 +316,30 @@ body {
   box-shadow: 0 0 0 2px rgba(139,92,246,0.15);
 }
 
-/* Route card detail sections */
-.detail-section {
-  margin-bottom: 10px;
+/* Route card detail tabs */
+.detail-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px 0 8px;
+  flex-wrap: wrap;
 }
-.detail-section-title {
-  font-size: 12px;
-  font-weight: 700;
+.detail-tab-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
   color: var(--text-secondary);
-  padding: 6px 0 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 6px;
+  white-space: nowrap;
 }
+.detail-tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+.detail-tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.detail-section { display: none; }
+.detail-section.active { display: block; }
 
 /* Route Detail Panel — centered modal */
 .route-detail-overlay {
@@ -4212,9 +4224,12 @@ function renderRouteCard(r, idx, sheetName) {
         </div>`;
     }
 
-    const sectionsHtml = sections.map(s => `
-        <div class="detail-section">
-            <div class="detail-section-title">${s.title}</div>
+    const tabsBar = `<div class="detail-tabs" onclick="event.stopPropagation()">` +
+        sections.map((s, i) => `<button class="detail-tab-btn${i === 0 ? ' active' : ''}" onclick="switchDetailTab('${rteId}',${i},this)">${s.title}</button>`).join('') +
+        `</div>`;
+
+    const sectionsHtml = sections.map((s, i) => `
+        <div class="detail-section${i === 0 ? ' active' : ''}" data-tab-id="${rteId}" data-tab-idx="${i}">
             <div class="details-grid">${s.fields.map(renderDetailField).join('')}</div>
         </div>
     `).join('');
@@ -4247,6 +4262,7 @@ function renderRouteCard(r, idx, sheetName) {
             </div>
         </div>
         <div class="route-card-details ${isDetailsOpen ? 'show' : ''}" id="rte-details-${rteId}">
+            ${tabsBar}
             ${sectionsHtml}
             <!-- Кнопки дій для ліда: 2 рядки -->
             <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
@@ -4259,6 +4275,17 @@ function renderRouteCard(r, idx, sheetName) {
             </div>
         </div>
     </div>`;
+}
+
+// ── Перемикання табів у деталях картки ──
+function switchDetailTab(rteId, idx, btn) {
+    // Toggle tab buttons
+    btn.parentElement.querySelectorAll('.detail-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Toggle sections
+    document.querySelectorAll(`.detail-section[data-tab-id="${rteId}"]`).forEach(s => {
+        s.classList.toggle('active', Number(s.dataset.tabIdx) === idx);
+    });
 }
 
 // ── Деталі картки маршруту ──
