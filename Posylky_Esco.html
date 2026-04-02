@@ -3825,7 +3825,7 @@ async function loadRoutes(forceRefresh) {
 async function loadRouteSheetData(idx, forceRefresh) {
     const sheet = routes[idx];
     if (!sheet) return;
-    if (sheet.rows !== null && !forceRefresh) return; // вже завантажено
+    if (sheet.rows != null && sheet.rows.length > 0 && !forceRefresh) return; // вже завантажено
 
     const loading = document.getElementById('routesLoading');
     if (loading) {
@@ -5840,7 +5840,10 @@ async function loadData() {
     }
 
     if (routesRes && routesRes.ok) {
-      routes = routesRes.routes || routesRes.data || [];
+      routes = (routesRes.routes || routesRes.data || []).map(function(r) {
+        r.rows = r.rows || null;  // ensure rows is null for lazy loading
+        return r;
+      });
       dispatches = routesRes.dispatches || [];
       expenses = routesRes.expenses || [];
       routeSummary = routesRes.summary || null;
