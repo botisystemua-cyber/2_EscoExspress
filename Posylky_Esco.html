@@ -332,20 +332,56 @@ body {
 /* Route Detail Panel — centered modal */
 .route-detail-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.4); z-index: 1000;
-  display: none; justify-content: flex-end;
+  background: rgba(0,0,0,0.6); z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+  padding: 10px;
 }
 .route-detail-overlay.open { display: flex; }
 .route-detail-panel {
-  width: 480px; max-width: 90vw; height: 100vh;
-  background: #fff; overflow-y: auto;
-  box-shadow: -4px 0 24px rgba(0,0,0,0.15);
-  padding: 20px;
+  width: 100%; max-width: 400px; max-height: 85vh;
+  background: #fff; overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.route-modal-header {
+  background: var(--primary);
+  color: white;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.route-modal-title {
+  font-size: 13px; font-weight: 700;
+}
+.route-modal-close {
+  background: rgba(255,255,255,0.2); border: none; color: white;
+  width: 26px; height: 26px; border-radius: 4px; cursor: pointer;
+  font-size: 14px;
+}
+.route-modal-close:hover { background: rgba(255,255,255,0.35); }
+.route-modal-body {
+  padding: 12px; max-height: 60vh; overflow-y: auto;
+}
+.route-modal-footer {
+  padding: 10px 12px;
+  background: var(--bg-main);
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.route-pick-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border: 2px solid var(--border); border-radius: 10px;
+  background: white; cursor: pointer; font-family: inherit;
+  font-size: 13px; font-weight: 600; width: 100%;
+  transition: all 0.2s;
+}
+.route-pick-btn:hover {
+  border-color: var(--purple); background: #faf5ff;
 }
 .route-detail-panel .detail-close {
-  float: right; padding: 4px 10px; border: none;
-  background: #f1f5f9; border-radius: 6px; cursor: pointer;
-  font-size: 16px;
+  display: none; /* hidden, using route-modal-close instead */
 }
 .route-detail-panel .readonly-badge {
   display: inline-block; padding: 2px 8px; border-radius: 4px;
@@ -3593,21 +3629,39 @@ function bulkSetVerifyStatus(status) {
   afterBulkAction();
 }
 
-// Stub: В маршрут
+// Масове додавання в маршрут
 function bulkAddToRoute() {
   const ids = getSelectedIds();
   if (ids.length === 0) return;
-  console.log('bulkAddToRoute:', ids);
-  showToast(`В маршрут: ${ids.length} посилок (заглушка)`, 'info');
-  // Не скидаємо виділення — тут буде вибір рейсу
+  if (routes.length === 0) {
+    showToast('Маршрути не завантажені', 'error');
+    return;
+  }
+  _routeModalPkgIds = ids;
+  _routeModalMode = 'bulk';
+  showRoutePickerModal('🗺️ Перенести в маршрут', 'Додати ' + ids.length + ' посилок в маршрут:');
 }
 
-// Stub: Видалити з маршруту
-function bulkRemoveFromRoute() {
+// Видалити з маршруту
+async function bulkRemoveFromRoute() {
   const ids = getSelectedIds();
   if (ids.length === 0) return;
-  console.log('bulkRemoveFromRoute:', ids);
-  showToast(`Видалено з маршруту: ${ids.length} (заглушка)`, 'info');
+  if (!confirm('Видалити ' + ids.length + ' записів з маршруту?')) return;
+
+  var success = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var item = allData.find(function(p) { return p['PKG_ID'] === ids[i]; });
+    var rteId = item ? item['RTE_ID'] : '';
+    if (!rteId) continue;
+    try {
+      var res = await apiPost('removeFromRoute', { pkg_id: ids[i], rte_id: rteId });
+      if (res.ok) {
+        success++;
+        if (item) item['RTE_ID'] = '';
+      }
+    } catch(e) {}
+  }
+  showToast('Видалено з маршруту: ' + success, success > 0 ? 'success' : 'error');
   afterBulkAction();
 }
 
@@ -3629,17 +3683,19 @@ function setDirection(dir) {
   document.querySelectorAll('#mobileSidebar [data-dir]').forEach(el => {
     el.className = 'mob-item' + (el.dataset.dir === dir ? (dir === 'ue' ? ' active-ue' : ' active-eu') : '');
   });
-  renderCards();
+  // Switch back to parcels view if in route/other view
+  if (currentView !== 'parcels') backToParcels();
+  else renderCards();
   closeMobileSidebar();
 }
 
 function setView(view) {
-  currentView = view;
   // Update bottom nav
   document.querySelectorAll('.bottom-nav-item').forEach((el, i) => {
     el.classList.toggle('active', (view === 'parcels' && i === 0) || (view === 'passengers' && i === 1));
   });
-  renderCards();
+  if (view === 'parcels' && currentView !== 'parcels') backToParcels();
+  else { currentView = view; renderCards(); }
   closeMobileSidebar();
 }
 
@@ -3822,15 +3878,18 @@ async function loadRoutes(forceRefresh) {
             // Зберігаємо список аркушів (rows ще не завантажені)
             allRouteSheets = routeList.map(s => ({
                 sheetName: s.sheetName,
+                city: s.city || s.sheetName.replace(/^Маршрут_/, ''),
                 rowCount: s.rowCount,
                 paxCount: s.paxCount || 0,
                 parcelCount: s.parcelCount || 0,
                 headers: [],
                 rows: null // null = ще не завантажено
             }));
+            // Бекенд вже категоризує: routes/dispatches/expenses
+            // Аркуші можуть називатися "Цюріх" або "Маршрут_Цюріх"
             routes = allRouteSheets.filter(s => {
                 const n = (s.sheetName || '');
-                return n.startsWith('Маршрут_') && n !== 'Маршрут_Шаблон';
+                return n !== 'Маршрут_Шаблон' && n !== 'Взірець';
             });
             setCount('pcCountRoutes', routes.length);
             setCount('mobileCountRoutes', routes.length);
@@ -3851,7 +3910,7 @@ async function loadRoutes(forceRefresh) {
 async function loadRouteSheetData(idx, forceRefresh) {
     const sheet = routes[idx];
     if (!sheet) return;
-    if (sheet.rows !== null && !forceRefresh) return; // вже завантажено
+    if (sheet.rows != null && sheet.rows.length > 0 && !forceRefresh) return; // вже завантажено
 
     const loading = document.getElementById('routesLoading');
     if (loading) {
@@ -3860,24 +3919,27 @@ async function loadRouteSheetData(idx, forceRefresh) {
     }
 
     try {
+        console.log('[loadRouteSheetData] Requesting sheet:', sheet.sheetName);
         const res = await apiPost('getRouteSheet', { sheetName: sheet.sheetName, forceRefresh: !!forceRefresh });
+        console.log('[loadRouteSheetData] Response:', JSON.stringify(res).substring(0, 500));
         if (loading) loading.style.display = 'none';
         if (res.ok && res.data) {
             sheet.headers = res.data.headers || [];
             sheet.rows = res.data.rows || [];
             sheet.rowCount = res.data.rowCount || 0;
+            console.log('[loadRouteSheetData] Loaded', sheet.rows.length, 'rows for', sheet.sheetName);
             // Оновити також в allRouteSheets
             const allIdx = allRouteSheets.findIndex(s => s.sheetName === sheet.sheetName);
             if (allIdx !== -1) allRouteSheets[allIdx] = sheet;
         } else {
-            console.error('loadRouteSheetData API error:', res.error || 'Unknown error');
+            console.error('[loadRouteSheetData] API error:', res.error || 'Unknown error', 'Full response:', res);
             showToast('❌ Помилка завантаження маршруту: ' + (res.error || 'Невідома помилка'));
             sheet.rows = [];
             sheet.rowCount = 0;
         }
     } catch (e) {
         if (loading) loading.style.display = 'none';
-        console.error('loadRouteSheetData error:', e);
+        console.error('[loadRouteSheetData] Network error:', e.message, e);
         showToast('❌ Помилка мережі: ' + e.message);
         sheet.rows = [];
         sheet.rowCount = 0;
@@ -5104,16 +5166,21 @@ function openRouteModal(pkgId) {
     showToast('Маршрути не завантажені', 'error');
     return;
   }
-  // Show route picker
-  var html = '<div style="padding:20px;max-width:400px;">' +
-    '<h3>🚖 Обрати маршрут для ' + pkgId + '</h3>' +
-    '<div style="display:flex;flex-direction:column;gap:6px;margin-top:12px;">';
-  routes.forEach(function(r, i) {
-    html += '<button onclick="assignToRoute(\'' + pkgId + '\', ' + i + ')" style="padding:10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;text-align:left;font-family:inherit;">' +
-      (r.city || r.sheetName) + ' <span style="color:var(--text-secondary);font-size:11px;">👤' + (r.paxCount||0) + ' 📦' + (r.parcelCount||0) + '</span></button>';
-  });
-  html += '</div></div>';
+  _routeModalPkgIds = [pkgId];
+  _routeModalMode = 'single';
+  showRoutePickerModal('🗺️ Перенести в маршрут', 'Обрати маршрут для посилки:');
+}
 
+function closeRouteDetail() {
+  var overlay = document.getElementById('routeDetailOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+// Shared route picker modal state
+var _routeModalPkgIds = [];
+var _routeModalMode = 'single'; // 'single' or 'bulk'
+
+function showRoutePickerModal(title, subtitle) {
   var overlay = document.getElementById('routeDetailOverlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -5122,30 +5189,64 @@ function openRouteModal(pkgId) {
     overlay.onclick = function(e) { if (e.target === overlay) closeRouteDetail(); };
     document.body.appendChild(overlay);
   }
-  overlay.innerHTML = '<div class="route-detail-panel">' +
-    '<button class="detail-close" onclick="closeRouteDetail()">✕</button>' + html + '</div>';
+
+  var routeButtons = '';
+  if (routes.length === 0) {
+    routeButtons = '<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px;">Немає доступних маршрутів.<br>Створіть маршрут у меню зліва.</div>';
+  } else {
+    routeButtons = routes.map(function(r, i) {
+      var name = r.city || (r.sheetName || '').replace(/^Маршрут_/, '');
+      return '<button class="route-pick-btn" onclick="doAssignToRoute(' + i + ')">' +
+        '<span>🗺️ ' + name + '</span>' +
+        '<span style="font-size:10px;color:var(--text-secondary);font-weight:400;">👤' + (r.paxCount||0) + ' · 📦' + (r.parcelCount||0) + '</span>' +
+      '</button>';
+    }).join('');
+  }
+
+  overlay.innerHTML =
+    '<div class="route-detail-panel">' +
+      '<div class="route-modal-header">' +
+        '<span class="route-modal-title">' + title + '</span>' +
+        '<button class="route-modal-close" onclick="closeRouteDetail()">×</button>' +
+      '</div>' +
+      '<div class="route-modal-body">' +
+        '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">' + subtitle + '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' + routeButtons + '</div>' +
+      '</div>' +
+      '<div class="route-modal-footer">' +
+        '<button onclick="closeRouteDetail()" style="padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:#fff;font-family:inherit;font-size:12px;cursor:pointer;">Скасувати</button>' +
+      '</div>' +
+    '</div>';
   overlay.classList.add('open');
 }
 
-function assignToRoute(pkgId, routeIdx) {
+async function doAssignToRoute(routeIdx) {
   var route = routes[routeIdx];
-  showToast('Додаємо в ' + (route.city || route.sheetName) + '...', 'info');
+  var ids = _routeModalPkgIds;
+  var routeName = route.city || route.sheetName;
   closeRouteDetail();
 
-  apiPost('addToRoute', {
-    pkg_id: pkgId,
-    sheet_name: route.sheetName,
-    rte_id: route.sheetName
-  }).then(function(res) {
-    if (res.ok) {
-      showToast('Додано в маршрут ' + (route.city || route.sheetName), 'success');
-      // Update local data
-      var item = allData.find(function(p) { return p['PKG_ID'] === pkgId; });
-      if (item) { item['RTE_ID'] = route.sheetName; renderCards(); }
-    } else {
-      showToast('Помилка: ' + res.error, 'error');
-    }
-  }).catch(function() { showToast('Помилка', 'error'); });
+  showToast('Додаємо ' + ids.length + ' запис(ів) в ' + routeName + '...', 'info');
+
+  var success = 0;
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      var res = await apiPost('addToRoute', {
+        pkg_id: ids[i],
+        sheet_name: route.sheetName,
+        rte_id: route.sheetName
+      });
+      if (res.ok) {
+        success++;
+        var item = allData.find(function(p) { return p['PKG_ID'] === ids[i]; });
+        if (item) item['RTE_ID'] = route.sheetName;
+      }
+    } catch(e) {}
+  }
+
+  showToast('Додано в ' + routeName + ': ' + success + ' з ' + ids.length, success > 0 ? 'success' : 'error');
+  if (_routeModalMode === 'bulk') afterBulkAction();
+  else renderCards();
 }
 
 // ===== [SECT-COUNTERS] COUNTERS =====
@@ -5201,7 +5302,9 @@ function setVerFilter(f) {
   document.querySelectorAll('#mobileSidebar [data-mfilter]').forEach(el => {
     el.classList.toggle('active', el.dataset.mfilter === f);
   });
-  renderCards();
+  // Switch back to parcels view if in route/other view
+  if (currentView !== 'parcels') backToParcels();
+  else renderCards();
   updateCounters();
 }
 // startEdit/saveEdit replaced by startInlineEdit/saveInlineEdit
@@ -5223,7 +5326,7 @@ function openMessenger(phone) {
   menu.addEventListener('click', e => { if (e.target === menu) menu.remove(); });
 }
 
-function openRouteModal(pkgId) { alert('Вибір маршруту для ' + pkgId); }
+// openRouteModal defined in SECT-ROUTE-MODAL above
 
 // ===== [SECT-ARCHIVE] ARCHIVE SYSTEM =====
 
@@ -5886,7 +5989,10 @@ async function loadData() {
     }
 
     if (routesRes && routesRes.ok) {
-      routes = routesRes.routes || routesRes.data || [];
+      routes = (routesRes.routes || routesRes.data || []).map(function(r) {
+        r.rows = r.rows || null;  // ensure rows is null for lazy loading
+        return r;
+      });
       dispatches = routesRes.dispatches || [];
       expenses = routesRes.expenses || [];
       routeSummary = routesRes.summary || null;
