@@ -1881,9 +1881,9 @@ body {
     <!-- Direction Section -->
     <div class="sidebar-section">
       <div class="sidebar-section-header" onclick="toggleSection(this)">
-        🧭 Напрямок <span class="toggle open">▶</span>
+        🧭 Напрямок <span class="toggle">▶</span>
       </div>
-      <div class="sidebar-section-body">
+      <div class="sidebar-section-body hidden">
         <div class="sidebar-item active-ue" data-dir="ue" onclick="setDirection('ue')">
           🇺🇦 УК → Європа <span class="badge-count" id="countUe">0</span>
         </div>
@@ -1896,9 +1896,9 @@ body {
     <!-- Verification Section -->
     <div class="sidebar-section">
       <div class="sidebar-section-header" onclick="toggleSection(this)">
-        🔍 Перевірка <span class="toggle open">▶</span>
+        🔍 Перевірка <span class="toggle">▶</span>
       </div>
-      <div class="sidebar-section-body">
+      <div class="sidebar-section-body hidden">
         <div class="sidebar-item active" data-filter="all" onclick="setVerFilter('all')">
           Всі <span class="badge-count" id="countAll">0</span>
         </div>
@@ -1917,9 +1917,9 @@ body {
     <!-- Routes Section -->
     <div class="sidebar-section">
       <div class="sidebar-section-header" onclick="toggleSection(this)">
-        🚚 Маршрути <span class="toggle open">▶</span>
+        🚚 Маршрути <span class="toggle">▶</span>
       </div>
-      <div class="sidebar-section-body" id="routesSidebar">
+      <div class="sidebar-section-body hidden" id="routesSidebar">
         <!-- Filled by JS -->
       </div>
     </div>
