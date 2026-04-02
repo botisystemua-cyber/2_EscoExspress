@@ -6,12 +6,12 @@
 
 // ===== БАЗИ ДАНИХ (Google Sheets) =====
 var DB = {
-  POSYLKI:  'YOUR_POSYLKI_SPREADSHEET_ID',
-  MARHRUT:  'YOUR_MARHRUT_SPREADSHEET_ID',
-  KLIYENTU: 'YOUR_KLIYENTU_SPREADSHEET_ID',
-  FINANCE:  'YOUR_FINANCE_SPREADSHEET_ID',
-  CONFIG:   'YOUR_CONFIG_SPREADSHEET_ID',
-  ARCHIVE:  'YOUR_ARCHIVE_SPREADSHEET_ID'
+  POSYLKI:  '1_vfEhdLEM2SVTBiu_3eDilMs1HlKxvPrJBbiHYjgrJo',
+  MARHRUT:  '10SZhKV08BJyvWoMwhT0iddtWzYrDYFjCM8xgqViuE3Y',
+  KLIYENTU: '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38',
+  FINANCE:  '1AhID7Ust45sA4PCAUjWJz515qnxzQGSj5wGQ7K8Jbu0',
+  CONFIG:   '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq3udBE',
+  ARCHIVE:  '19Ftljah5eX07RLHJaBrvYV7hStxspxcJVi6VATGZvF0'
 };
 
 // ===== НАЗВИ АРКУШІВ =====
@@ -137,8 +137,11 @@ function doPost(e) {
       case 'updateField':             result = apiUpdateField(body); break;
       case 'checkDuplicates':         result = apiCheckDuplicates(body); break;
 
-      // ── DELETE ──
+      // ── DELETE / ARCHIVE ──
       case 'deleteParcel':            result = apiDeleteParcel(body); break;
+      case 'getArchive':              result = apiGetArchive(body); break;
+      case 'restoreFromArchive':      result = apiRestoreFromArchive(body); break;
+      case 'permanentDelete':         result = apiPermanentDelete(body); break;
 
       // ── VERIFICATION ──
       case 'scanTTN':                 result = apiScanTTN(body); break;
@@ -150,11 +153,21 @@ function doPost(e) {
       // ── ROUTES ──
       case 'getRoutesList':           result = apiGetRoutesList(body); break;
       case 'getRouteSheet':           result = apiGetRouteSheet(body); break;
+      case 'getRouteByRteId':         result = apiGetRouteByRteId(body); break;
       case 'addToRoute':              result = apiAddToRoute(body); break;
       case 'removeFromRoute':         result = apiRemoveFromRoute(body); break;
       case 'createRoute':             result = apiCreateRoute(body); break;
       case 'deleteRoute':             result = apiDeleteRoute(body); break;
       case 'updateRouteField':        result = apiUpdateRouteField(body); break;
+
+      // ── DISPATCH ──
+      case 'getDispatches':           result = apiGetDispatches(body); break;
+      case 'updateDispatch':          result = apiUpdateDispatch(body); break;
+      case 'getDispatchByRoute':      result = apiGetDispatchByRoute(body); break;
+
+      // ── EXPENSES & SUMMARY ──
+      case 'getExpenses':             result = apiGetExpenses(body); break;
+      case 'getSummary':              result = apiGetSummary(body); break;
 
       // ── NOVA POSHTA ──
       case 'trackParcel':             result = apiTrackParcel(body); break;
@@ -712,7 +725,9 @@ function apiCheckDuplicates(params) {
 // ============================================================
 
 /**
- * apiDeleteParcel — архівація посилки (soft delete)
+ * apiDeleteParcel — архівація посилки
+ * 1. Копіює ВЕСЬ рядок 1:1 в DB.ARCHIVE "Посилки" + метадані
+ * 2. ВИДАЛЯЄ рядок з основної таблиці
  * params: { pkg_id, reason, archived_by }
  */
 function apiDeleteParcel(params) {
@@ -721,21 +736,196 @@ function apiDeleteParcel(params) {
     return { ok: false, error: 'Посилку не знайдено: ' + params.pkg_id };
   }
 
-  var updates = {
-    'Статус CRM': 'Архів',
-    'DATE_ARCHIVE': now(),
-    'ARCHIVED_BY': params.archived_by || 'CRM',
-    'ARCHIVE_REASON': params.reason || ''
-  };
+  var archiveId = genId('ARC');
+  var dateArchive = now();
+  var archivedBy = params.archived_by || 'CRM';
+  var reason = params.reason || '';
 
-  for (var col in updates) {
-    var idx = found.headers.indexOf(col);
-    if (idx !== -1) {
-      found.sheet.getRange(found.rowNum, idx + 1).setValue(updates[col]);
-    }
+  // 1. Зібрати повний об'єкт посилки
+  var pkgObj = {};
+  for (var i = 0; i < found.headers.length; i++) {
+    pkgObj[found.headers[i]] = found.data[i] !== undefined ? found.data[i] : '';
   }
 
-  return { ok: true, pkg_id: params.pkg_id };
+  // Додати архівні метадані
+  pkgObj['ARCHIVE_ID'] = archiveId;
+  pkgObj['DATE_ARCHIVE'] = dateArchive;
+  pkgObj['ARCHIVED_BY'] = archivedBy;
+  pkgObj['ARCHIVE_REASON'] = reason;
+  pkgObj['Статус CRM'] = 'Архів';
+
+  // 2. Записати в DB.ARCHIVE → "Посилки"
+  // Структура архіву: ті самі колонки що й джерело
+  try {
+    var archiveSheet = getSheetFromDb('ARCHIVE', 'Посилки');
+    var archHeaders = normalizeHeaders(archiveSheet.getRange(1, 1, 1, archiveSheet.getLastColumn()).getValues()[0]);
+
+    var archRow = archHeaders.map(function(h) {
+      return pkgObj[h] !== undefined ? pkgObj[h] : '';
+    });
+
+    archiveSheet.appendRow(archRow);
+  } catch(e) {
+    Logger.log('Archive write error: ' + e.message);
+    return { ok: false, error: 'Помилка запису в архів: ' + e.message };
+  }
+
+  // 3. Видалити рядок з основної таблиці
+  found.sheet.deleteRow(found.rowNum);
+
+  return { ok: true, pkg_id: params.pkg_id, archive_id: archiveId };
+}
+
+// ============================================================
+// ARCHIVE ENDPOINTS
+// ============================================================
+
+/**
+ * apiGetArchive — отримати архівні посилки з DB.ARCHIVE "Посилки"
+ * Повертає ПОВНІ дані (такі ж як getAll) + архівні метадані
+ * params: { direction: 'all'|'ue'|'eu' }
+ */
+function apiGetArchive(params) {
+  var direction = params.direction || 'all';
+  var result = [];
+
+  try {
+    var archiveSheet = getSheetFromDb('ARCHIVE', 'Посилки');
+    var data = archiveSheet.getDataRange().getValues();
+    if (data.length < 2) return { ok: true, data: [] };
+
+    var headers = normalizeHeaders(data[0]);
+
+    for (var i = 1; i < data.length; i++) {
+      var obj = {};
+      for (var j = 0; j < headers.length; j++) {
+        var val = data[i][j];
+        if (val instanceof Date) {
+          obj[headers[j]] = Utilities.formatDate(val, 'Europe/Kiev', 'dd.MM.yyyy HH:mm');
+        } else {
+          obj[headers[j]] = val !== undefined && val !== null ? String(val) : '';
+        }
+      }
+
+      if (!obj['PKG_ID'] && !obj['Піб відправника']) continue;
+
+      // Фільтр за напрямом
+      if (direction === 'ue' && obj['Напрям'] !== 'УК→ЄВ') continue;
+      if (direction === 'eu' && obj['Напрям'] !== 'ЄВ→УК') continue;
+
+      obj['_sheet'] = obj['SOURCE_SHEET'] || '';
+      obj['_isArchive'] = true;
+      result.push(obj);
+    }
+  } catch(e) {
+    return { ok: false, error: 'Помилка читання архіву: ' + e.message };
+  }
+
+  result.reverse();
+  return { ok: true, data: result };
+}
+
+/**
+ * apiRestoreFromArchive — відновити посилку з архіву
+ * 1. Читає повний рядок з DB.ARCHIVE "Посилки"
+ * 2. Додає рядок назад в основну таблицю (УК→ЄВ або ЄВ→УК)
+ * 3. Видаляє з архіву
+ * params: { pkg_id }
+ */
+function apiRestoreFromArchive(params) {
+  var pkgId = params.pkg_id;
+
+  try {
+    var archiveSheet = getSheetFromDb('ARCHIVE', 'Посилки');
+    var archData = archiveSheet.getDataRange().getValues();
+    var archHeaders = normalizeHeaders(archData[0]);
+    var pkgIdIdx = archHeaders.indexOf('PKG_ID');
+
+    if (pkgIdIdx === -1) return { ok: false, error: 'PKG_ID колонка не знайдена в архіві' };
+
+    // Знайти рядок в архіві (з кінця — найновіший)
+    var archRowIdx = -1;
+    var archRowData = null;
+    for (var i = archData.length - 1; i >= 1; i--) {
+      if (String(archData[i][pkgIdIdx]) === pkgId) {
+        archRowIdx = i;
+        archRowData = archData[i];
+        break;
+      }
+    }
+
+    if (archRowIdx === -1) return { ok: false, error: 'Посилку не знайдено в архіві: ' + pkgId };
+
+    // Зібрати об'єкт з архівних даних
+    var archObj = {};
+    for (var j = 0; j < archHeaders.length; j++) {
+      archObj[archHeaders[j]] = archRowData[j] !== undefined ? archRowData[j] : '';
+    }
+
+    // Визначити цільовий аркуш
+    var direction = archObj['Напрям'] || '';
+    var targetSheet, targetCols;
+    if (direction === 'ЄВ→УК') {
+      targetSheet = getEuSheet();
+      targetCols = PKG_EU_COLS;
+    } else {
+      targetSheet = getUeSheet();
+      targetCols = PKG_UE_COLS;
+    }
+
+    // Очистити архівні метадані
+    archObj['Статус CRM'] = 'Активний';
+    archObj['DATE_ARCHIVE'] = '';
+    archObj['ARCHIVED_BY'] = '';
+    archObj['ARCHIVE_REASON'] = '';
+    archObj['ARCHIVE_ID'] = '';
+
+    // Записати рядок в цільову таблицю
+    var targetHeaders = normalizeHeaders(targetSheet.getRange(1, 1, 1, targetSheet.getLastColumn()).getValues()[0]);
+    var newRow = targetHeaders.map(function(h) {
+      return archObj[h] !== undefined ? archObj[h] : '';
+    });
+    targetSheet.appendRow(newRow);
+
+    // Видалити з архіву
+    archiveSheet.deleteRow(archRowIdx + 1);
+
+    return { ok: true, pkg_id: pkgId };
+
+  } catch(e) {
+    return { ok: false, error: 'Помилка відновлення: ' + e.message };
+  }
+}
+
+/**
+ * apiPermanentDelete — видалити назавжди з архіву
+ * params: { pkg_id } або { pkg_ids: [...] } для масового видалення
+ */
+function apiPermanentDelete(params) {
+  var pkgIds = params.pkg_ids || [params.pkg_id];
+  var deleted = 0;
+
+  try {
+    var archiveSheet = getSheetFromDb('ARCHIVE', 'Посилки');
+    var archData = archiveSheet.getDataRange().getValues();
+    var archHeaders = normalizeHeaders(archData[0]);
+    var pkgIdIdx = archHeaders.indexOf('PKG_ID');
+
+    if (pkgIdIdx === -1) return { ok: false, error: 'PKG_ID колонка не знайдена' };
+
+    // Видаляти з кінця щоб не зсувати індекси
+    for (var i = archData.length - 1; i >= 1; i--) {
+      var id = String(archData[i][pkgIdIdx]);
+      if (pkgIds.indexOf(id) !== -1) {
+        archiveSheet.deleteRow(i + 1);
+        deleted++;
+      }
+    }
+  } catch(e) {
+    return { ok: false, error: 'Помилка видалення: ' + e.message };
+  }
+
+  return { ok: true, deleted: deleted };
 }
 
 // ============================================================
@@ -947,31 +1137,54 @@ function apiRejectVerification(params) {
 // ============================================================
 
 /**
- * apiGetRoutesList — список всіх маршрутів
- * Кеш: routesList_v2, TTL 300 сек
+ * apiGetRoutesList — список всіх аркушів маршрутної таблиці
+ * Категоризація: routes, dispatches, expenses, summary
+ * Кеш: routesList_v3, TTL 300 сек
  */
+var HIDDEN_SHEETS = ['Взірець', 'Зведення рейсів'];
+
 function apiGetRoutesList(params) {
   var cache = CacheService.getScriptCache();
-  var cached = cache.get('routesList_v2');
+  var cached = cache.get('routesList_v3');
   if (cached) {
     try { return JSON.parse(cached); } catch(e) { /* ignore */ }
   }
 
   var ss = SpreadsheetApp.openById(DB.MARHRUT);
   var sheets = ss.getSheets();
-  var skipPattern = /^(Лог|Конфіг|Config|Log|Шаблон|Template)/i;
+  var skipPattern = /^(Лог|Конфіг|Config|Log|Шаблон|Template|Маршрут_Шаблон|Відправка_Шаблон|Витрати_Шаблон)/i;
 
   var routes = [];
+  var dispatches = [];
+  var expenses = [];
+  var summary = null;
+
   for (var i = 0; i < sheets.length; i++) {
     var name = sheets[i].getName();
     if (skipPattern.test(name)) continue;
-    // Тільки аркуші що починаються з "Маршрут_"
-    if (name.indexOf('Маршрут_') !== 0) continue;
+    if (HIDDEN_SHEETS.indexOf(name) !== -1 && name !== 'Зведення рейсів') continue;
 
     var lastRow = sheets[i].getLastRow();
     var rowCount = Math.max(0, lastRow - 1);
 
-    // Порахувати пасажирів і посилок
+    // Категоризація
+    if (name === 'Зведення рейсів') {
+      summary = { sheetName: name, rowCount: rowCount };
+      continue;
+    }
+    if (name.indexOf('Відправка') === 0 || name.indexOf('Відправка_') === 0) {
+      var dispCity = name.replace(/^Відправка[_ ]*/, '');
+      dispatches.push({ sheetName: name, city: dispCity, rowCount: rowCount });
+      continue;
+    }
+    if (name.indexOf('Витрати') === 0 || name.indexOf('Витрати_') === 0) {
+      var expCity = name.replace(/^Витрати[_ ]*/, '');
+      expenses.push({ sheetName: name, city: expCity, rowCount: rowCount });
+      continue;
+    }
+
+    // Маршрутний аркуш (Цюріх, Женева, Маршрут_Назва тощо)
+    var cityName = name.replace(/^Маршрут_/, '');
     var paxCount = 0, parcelCount = 0;
     if (rowCount > 0) {
       var lastCol = sheets[i].getLastColumn();
@@ -991,17 +1204,18 @@ function apiGetRoutesList(params) {
 
     routes.push({
       sheetName: name,
+      city: cityName,
       rowCount: rowCount,
       paxCount: paxCount,
       parcelCount: parcelCount
     });
   }
 
-  var result = { ok: true, data: routes };
+  var result = { ok: true, routes: routes, dispatches: dispatches, expenses: expenses, summary: summary };
 
   try {
-    cache.put('routesList_v2', JSON.stringify(result), 300);
-  } catch(e) { /* дані > 100KB — ігноруємо */ }
+    cache.put('routesList_v3', JSON.stringify(result), 300);
+  } catch(e) { /* > 100KB */ }
 
   return result;
 }
@@ -1161,7 +1375,7 @@ function apiAddToRoute(params) {
   // 6. Інвалідувати кеш
   var cache = CacheService.getScriptCache();
   cache.remove('routeSheet_' + sheetName);
-  cache.remove('routesList_v2');
+  cache.remove('routesList_v3');
 
   return { ok: true, pkg_id: params.pkg_id, route: sheetName };
 }
@@ -1185,7 +1399,7 @@ function apiRemoveFromRoute(params) {
 
   // Інвалідувати кеш
   var cache = CacheService.getScriptCache();
-  cache.remove('routesList_v2');
+  cache.remove('routesList_v3');
 
   return { ok: true, pkg_id: params.pkg_id };
 }
@@ -1254,7 +1468,7 @@ function apiCreateRoute(params) {
 
   // Інвалідувати кеш
   var cache = CacheService.getScriptCache();
-  cache.remove('routesList_v2');
+  cache.remove('routesList_v3');
 
   return { ok: true, created: created };
 }
@@ -1278,10 +1492,182 @@ function apiDeleteRoute(params) {
 
   // Інвалідувати кеш
   var cache = CacheService.getScriptCache();
-  cache.remove('routesList_v2');
+  cache.remove('routesList_v3');
   cache.remove('routeSheet_Маршрут_' + name);
 
   return { ok: true, deleted: 'Маршрут_' + name };
+}
+
+/**
+ * apiGetRouteByRteId — всі записи рейсу за RTE_ID (для PDF)
+ * params: { sheetName, rte_id }
+ */
+function apiGetRouteByRteId(params) {
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName(params.sheetName);
+  if (!sheet) return { ok: false, error: 'Аркуш не знайдено: ' + params.sheetName };
+
+  var all = getAllData(sheet);
+  var rteIdx = all.headers.indexOf('RTE_ID');
+  if (rteIdx === -1) return { ok: true, data: [] };
+
+  var rows = [];
+  for (var i = 0; i < all.data.length; i++) {
+    if (String(all.data[i][rteIdx]) === String(params.rte_id)) {
+      rows.push(rowToObj(all.headers, all.data[i]));
+    }
+  }
+  return { ok: true, data: rows };
+}
+
+// ============================================================
+// DISPATCH ENDPOINTS
+// ============================================================
+
+/**
+ * apiGetDispatches — дані аркуша Відправка
+ * params: { sheetName, filters: { date_from, date_to, driver, search } }
+ */
+function apiGetDispatches(params) {
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName(params.sheetName);
+  if (!sheet) return { ok: false, error: 'Аркуш не знайдено: ' + params.sheetName };
+
+  var all = getAllData(sheet);
+  var filters = params.filters || {};
+  var rows = [];
+
+  for (var i = 0; i < all.data.length; i++) {
+    var isEmpty = true;
+    for (var j = 0; j < all.data[i].length; j++) {
+      if (all.data[i][j] !== '' && all.data[i][j] !== null) { isEmpty = false; break; }
+    }
+    if (isEmpty) continue;
+
+    var obj = rowToObj(all.headers, all.data[i]);
+    obj._rowNum = i + 2;
+
+    // Фільтри
+    if (filters.driver && obj['Водій'] && obj['Водій'].indexOf(filters.driver) === -1) continue;
+    if (filters.search) {
+      var s = filters.search.toLowerCase();
+      var searchIn = [obj['Піб відправника'], obj['Піб отримувача'], obj['Телефон відправника'], obj['Телефон отримувача'], obj['DISPATCH_ID']].join(' ').toLowerCase();
+      if (searchIn.indexOf(s) === -1) continue;
+    }
+
+    rows.push(obj);
+  }
+
+  return { ok: true, data: rows, count: rows.length };
+}
+
+/**
+ * apiUpdateDispatch — оновити поле у Відправці
+ * params: { sheetName, dispatch_id, col, value }
+ */
+function apiUpdateDispatch(params) {
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName(params.sheetName);
+  if (!sheet) return { ok: false, error: 'Аркуш не знайдено: ' + params.sheetName };
+
+  var found = findRow(sheet, 'DISPATCH_ID', params.dispatch_id);
+  if (!found) return { ok: false, error: 'Запис не знайдено: ' + params.dispatch_id };
+
+  var colIdx = found.headers.indexOf(params.col);
+  if (colIdx === -1) return { ok: false, error: 'Колонку не знайдено: ' + params.col };
+
+  sheet.getRange(found.rowNum, colIdx + 1).setValue(params.value);
+
+  var cache = CacheService.getScriptCache();
+  cache.remove('routeSheet_' + params.sheetName);
+
+  return { ok: true };
+}
+
+/**
+ * apiGetDispatchByRoute — відправки за RTE_ID (для PDF)
+ * params: { sheetName, rte_id }
+ */
+function apiGetDispatchByRoute(params) {
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName(params.sheetName);
+  if (!sheet) return { ok: false, error: 'Аркуш не знайдено: ' + params.sheetName };
+
+  var all = getAllData(sheet);
+  var rteIdx = all.headers.indexOf('RTE_ID');
+  if (rteIdx === -1) return { ok: true, data: [] };
+
+  var rows = [];
+  for (var i = 0; i < all.data.length; i++) {
+    if (String(all.data[i][rteIdx]) === String(params.rte_id)) {
+      var obj = rowToObj(all.headers, all.data[i]);
+      obj._rowNum = i + 2;
+      rows.push(obj);
+    }
+  }
+  return { ok: true, data: rows };
+}
+
+// ============================================================
+// EXPENSES & SUMMARY ENDPOINTS
+// ============================================================
+
+/**
+ * apiGetExpenses — витрати (read-only)
+ * params: { sheetName, rte_id? }
+ */
+function apiGetExpenses(params) {
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName(params.sheetName);
+  if (!sheet) return { ok: false, error: 'Аркуш не знайдено: ' + params.sheetName };
+
+  var all = getAllData(sheet);
+  var rows = [];
+  var rteIdx = all.headers.indexOf('RTE_ID');
+
+  for (var i = 0; i < all.data.length; i++) {
+    var isEmpty = true;
+    for (var j = 0; j < all.data[i].length; j++) {
+      if (all.data[i][j] !== '' && all.data[i][j] !== null) { isEmpty = false; break; }
+    }
+    if (isEmpty) continue;
+
+    var obj = rowToObj(all.headers, all.data[i]);
+
+    if (params.rte_id && rteIdx !== -1 && obj['RTE_ID'] !== params.rte_id) continue;
+
+    rows.push(obj);
+  }
+
+  return { ok: true, data: rows, count: rows.length };
+}
+
+/**
+ * apiGetSummary — зведення рейсів (read-only)
+ * params: { rte_id? }
+ */
+function apiGetSummary(params) {
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName('Зведення рейсів');
+  if (!sheet) return { ok: false, error: 'Аркуш "Зведення рейсів" не знайдено' };
+
+  var all = getAllData(sheet);
+  var rteIdx = all.headers.indexOf('RTE_ID');
+  var rows = [];
+
+  for (var i = 0; i < all.data.length; i++) {
+    var isEmpty = true;
+    for (var j = 0; j < all.data[i].length; j++) {
+      if (all.data[i][j] !== '' && all.data[i][j] !== null) { isEmpty = false; break; }
+    }
+    if (isEmpty) continue;
+
+    var obj = rowToObj(all.headers, all.data[i]);
+    if (params.rte_id && rteIdx !== -1 && obj['RTE_ID'] !== params.rte_id) continue;
+    rows.push(obj);
+  }
+
+  return { ok: true, data: rows, count: rows.length };
 }
 
 // ============================================================
