@@ -300,7 +300,36 @@ body {
   padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;
 }
 
-/* Route Detail Panel */
+/* Inline edit input for route cards */
+.detail-inline-edit {
+  width: 100%;
+  padding: 4px 6px;
+  border: 2px solid var(--info);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  background: #fff;
+}
+.detail-inline-edit:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px rgba(139,92,246,0.15);
+}
+
+/* Route card detail sections */
+.detail-section {
+  margin-bottom: 10px;
+}
+.detail-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 6px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+/* Route Detail Panel — centered modal */
 .route-detail-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.4); z-index: 1000;
@@ -4076,30 +4105,57 @@ function renderRouteCard(r, idx, sheetName) {
     const safeSheet = (sheetName || '').replace(/'/g, "\\'");
     const cleanPhone = (phone || '').replace(/[^+\d]/g, '');
 
-    // All detail fields for expanded view
-    const allFields = [
-        {label: 'ПІБ', key: 'Піб пасажира', value: name},
-        {label: 'Телефон', key: 'Телефон пасажира', value: phone},
-        {label: 'Тел. реєстратора', key: 'Телефон реєстратора', value: phoneReg},
-        {label: 'Напрям', key: 'Напрям', value: direction},
-        {label: 'Дата рейсу', key: 'Дата рейсу', value: displayDate},
-        {label: 'Кількість місць', key: 'Кількість місць', value: seats},
-        {label: 'Номер авто', key: 'Номер авто', value: auto},
-        {label: 'Місце в авто', key: 'Місце в авто', value: seat},
-        {label: 'Водій', key: 'Водій', value: driver},
-        {label: 'Адреса відправки', key: 'Адреса відправки', value: from},
-        {label: 'Адреса прибуття', key: 'Адреса прибуття', value: to},
-        {label: 'Сума', key: 'Сума', value: price},
-        {label: 'Валюта', key: 'Валюта', value: curr},
-        {label: 'Завдаток', key: 'Завдаток', value: deposit},
-        {label: 'Валюта завдатку', key: 'Валюта завдатку', value: depositCurr},
-        {label: 'Вага багажу', key: 'Вага багажу', value: weight},
-        {label: 'Ціна багажу', key: 'Ціна багажу', value: weightPrice},
-        {label: 'Валюта багажу', key: 'Валюта багажу', value: weightCurr},
-        {label: 'Статус оплати', key: 'Статус оплати', value: payStatus},
-        {label: 'Статус', key: 'Статус', value: status},
-        {label: 'Примітка', key: 'Примітка', value: note}
+    // Sections for expanded detail view
+    const sections = [
+        { title: '📋 Основне', fields: [
+            {label: 'ПІБ', key: 'Піб пасажира', value: name},
+            {label: 'Телефон', key: 'Телефон пасажира', value: phone},
+            {label: 'Тел. реєстратора', key: 'Телефон реєстратора', value: phoneReg},
+            {label: 'Напрям', key: 'Напрям', value: direction},
+            {label: 'Дата рейсу', key: 'Дата рейсу', value: displayDate},
+            {label: 'Статус', key: 'Статус', value: status}
+        ]},
+        { title: '💰 Фінанси', fields: [
+            {label: 'Сума', key: 'Сума', value: price},
+            {label: 'Валюта', key: 'Валюта', value: curr},
+            {label: 'Завдаток', key: 'Завдаток', value: deposit},
+            {label: 'Валюта завдатку', key: 'Валюта завдатку', value: depositCurr},
+            {label: 'Статус оплати', key: 'Статус оплати', value: payStatus},
+            {label: 'Вага багажу', key: 'Вага багажу', value: weight},
+            {label: 'Ціна багажу', key: 'Ціна багажу', value: weightPrice},
+            {label: 'Валюта багажу', key: 'Валюта багажу', value: weightCurr}
+        ]},
+        { title: '🚐 Рейс', fields: [
+            {label: 'Адреса відправки', key: 'Адреса відправки', value: from},
+            {label: 'Адреса прибуття', key: 'Адреса прибуття', value: to},
+            {label: 'Кількість місць', key: 'Кількість місць', value: seats},
+            {label: 'Номер авто', key: 'Номер авто', value: auto},
+            {label: 'Місце в авто', key: 'Місце в авто', value: seat},
+            {label: 'Водій', key: 'Водій', value: driver}
+        ]},
+        { title: '📝 Примітка', fields: [
+            {label: 'Примітка', key: 'Примітка', value: note}
+        ]}
     ];
+
+    function renderDetailField(f) {
+        const val = f.value || '—';
+        const safeKey = f.key.replace(/'/g, "\\'");
+        return `<div class="detail-block">
+            <div class="detail-block-label">${f.label}</div>
+            <div class="detail-block-value" id="rdv-${rteId}-${f.key}">${val}</div>
+            <div class="detail-block-actions">
+                <button class="detail-micro-btn" onclick="event.stopPropagation(); startRouteInlineEdit('${rteId}','${safeKey}','${safeSheet}')">✏️</button>
+            </div>
+        </div>`;
+    }
+
+    const sectionsHtml = sections.map(s => `
+        <div class="detail-section">
+            <div class="detail-section-title">${s.title}</div>
+            <div class="details-grid">${s.fields.map(renderDetailField).join('')}</div>
+        </div>
+    `).join('');
 
     return `<div class="route-card ${statusClass} ${isSelected ? 'selected' : ''}" id="rte-card-${rteId}">
         <div class="route-card-header" onclick="toggleRouteDetails('${rteId}')">
@@ -4129,20 +4185,7 @@ function renderRouteCard(r, idx, sheetName) {
             </div>
         </div>
         <div class="route-card-details ${isDetailsOpen ? 'show' : ''}" id="rte-details-${rteId}">
-            <div class="details-grid">
-                ${allFields.map(f => {
-                    const val = f.value || '—';
-                    const safeVal = String(f.value || '').replace(/'/g, "\\'");
-                    const safeKey = f.key.replace(/'/g, "\\'");
-                    return `<div class="detail-block">
-                        <div class="detail-block-label">${f.label}</div>
-                        <div class="detail-block-value" id="rdv-${rteId}-${f.key}">${val}</div>
-                        <div class="detail-block-actions">
-                            <button class="detail-micro-btn" onclick="event.stopPropagation(); startRouteInlineEdit('${rteId}','${safeKey}','${safeSheet}')">✏️</button>
-                        </div>
-                    </div>`;
-                }).join('')}
-            </div>
+            ${sectionsHtml}
             <!-- Кнопки дій для ліда: 2 рядки -->
             <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
                 <button class="btn-card-action btn-call" style="flex:1 1 calc(33% - 6px)" onclick="event.stopPropagation(); window.open('tel:${cleanPhone}')">📞 Дзвінок</button>
@@ -4208,6 +4251,8 @@ function updateRouteBulkToolbar() {
 }
 
 // ── Inline edit для полів маршруту ──
+var _routeInlineSaving = false;
+
 function startRouteInlineEdit(rteId, colName, sheetName) {
     const sheet = routes[activeRouteIdx];
     if (!sheet) return;
@@ -4234,30 +4279,37 @@ function startRouteInlineEdit(rteId, colName, sheetName) {
         el.innerHTML = `<input class="detail-inline-edit" type="date" value="${val}" onchange="saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value)" onblur="cancelRouteInlineEdit('${rteId}','${colName}')">`;
         el.querySelector('input').focus();
     } else {
-        el.innerHTML = `<input class="detail-inline-edit" type="text" value="${val}" onkeydown="if(event.key==='Enter')saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value);if(event.key==='Escape')cancelRouteInlineEdit('${rteId}','${colName}')" onblur="saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value)">`;
-        el.querySelector('input').focus();
+        el.innerHTML = `<input class="detail-inline-edit" type="text" value="${val}" onkeydown="if(event.key==='Enter'){event.target.blur();}" onblur="saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value)">`;
+        const inp = el.querySelector('input');
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
     }
 }
 async function saveRouteInlineEdit(rteId, colName, sheetName, newVal) {
-    const sheet = routes[activeRouteIdx];
-    if (!sheet) return;
-    const row = (sheet.rows || []).find(r => r['RTE_ID'] === rteId);
-    if (!row) return;
-    const oldVal = row[colName] || '';
-    if (String(newVal) === String(oldVal)) { cancelRouteInlineEdit(rteId, colName); return; }
+    if (_routeInlineSaving) return;
+    _routeInlineSaving = true;
+    try {
+        const sheet = routes[activeRouteIdx];
+        if (!sheet) return;
+        const row = (sheet.rows || []).find(r => r['RTE_ID'] === rteId);
+        if (!row) return;
+        const oldVal = row[colName] || '';
+        if (String(newVal) === String(oldVal)) { cancelRouteInlineEdit(rteId, colName); return; }
 
-    row[colName] = newVal;
-    const el = document.getElementById('rdv-' + rteId + '-' + colName);
-    if (el) el.textContent = newVal || '—';
+        row[colName] = newVal;
+        const el = document.getElementById('rdv-' + rteId + '-' + colName);
+        if (el) el.textContent = newVal || '—';
 
-    const res = await apiPost('updateRouteField', { sheet: sheetName, rte_id: rteId, col: colName, value: newVal });
-    if (res.ok) {
-        showToast('✅ Збережено');
-        renderRoutes();
-    } else {
-        showToast('❌ Помилка: ' + (res.error || ''));
-        row[colName] = oldVal;
-        if (el) el.textContent = oldVal || '—';
+        const res = await apiPost('updateRouteField', { sheet: sheetName, rte_id: rteId, col: colName, value: newVal });
+        if (res.ok) {
+            showToast('✅ Збережено');
+        } else {
+            showToast('❌ Помилка: ' + (res.error || ''));
+            row[colName] = oldVal;
+            if (el) el.textContent = oldVal || '—';
+        }
+    } finally {
+        _routeInlineSaving = false;
     }
 }
 function cancelRouteInlineEdit(rteId, colName) {
