@@ -5119,6 +5119,11 @@ function openRouteModal(pkgId) {
   showRoutePickerModal('🗺️ Перенести в маршрут', 'Обрати маршрут для посилки:');
 }
 
+function closeRouteDetail() {
+  var overlay = document.getElementById('routeDetailOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
 // Shared route picker modal state
 var _routeModalPkgIds = [];
 var _routeModalMode = 'single'; // 'single' or 'bulk'
