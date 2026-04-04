@@ -4248,29 +4248,37 @@ function renderRoutes() {
 function renderRouteCard(r, idx, sheetName) {
     const rteId = r['RTE_ID'] || '';
     const type = r['Тип запису'] || '';
-    const name = r['Піб пасажира'] || '—';
-    const phone = String(r['Телефон пасажира'] || '—');
-    const date = r['Дата рейсу'] || '';
+    const isPax = type.includes('Пасажир');
+    // Universal name/phone: support both passenger and parcel column names
+    const name = r['Піб пасажира'] || r['Піб відправника'] || r['Піб'] || '—';
+    const phone = String(r['Телефон пасажира'] || r['Телефон реєстратора'] || r['Телефон'] || '—');
+    const date = r['Дата рейсу'] || r['Дата відправки'] || '';
     const direction = r['Напрям'] || '';
     const auto = r['Номер авто'] || '';
     const seat = r['Місце в авто'] || '';
-    const seats = r['Кількість місць'] || 1;
-    const from = r['Адреса відправки'] || '';
-    const to = r['Адреса прибуття'] || r['Адреса отримувача'] || '';
+    const seats = r['Кількість місць'] || (isPax ? 1 : '');
+    const from = r['Адреса відправки'] || r['Адреса'] || '';
+    const to = r['Адреса прибуття'] || r['Адреса отримувача'] || r['Адреса в Європі'] || '';
     const price = r['Сума'] || '';
-    const curr = r['Валюта'] || '';
+    const curr = r['Валюта'] || r['Валюта оплати'] || '';
     const deposit = r['Завдаток'] || '';
     const depositCurr = r['Валюта завдатку'] || '';
     const payStatus = r['Статус оплати'] || '';
-    const status = r['Статус'] || '';
+    const status = r['Статус'] || r['Статус ліда'] || '';
     const driver = r['Водій'] || '';
-    const weight = r['Вага багажу'] || '';
+    const weight = r['Вага багажу'] || r['Кг'] || r['Кг посилки'] || '';
     const weightPrice = r['Ціна багажу'] || '';
     const weightCurr = r['Валюта багажу'] || '';
     const note = r['Примітка'] || '';
     const phoneReg = r['Телефон реєстратора'] || '';
     const smartId = r['Ід_смарт'] || '';
     const cliId = r['CLI_ID'] || '';
+    // Parcel-specific fields
+    const receiver = r['Піб отримувача'] || '';
+    const receiverPhone = r['Телефон отримувача'] || '';
+    const ttn = r['Номер ТТН'] || '';
+    const description = r['Опис'] || r['Опис посилки'] || '';
+    const qty = r['Кількість позицій'] || '';
 
     const statusClass = status === 'Підтверджено' ? 'status-confirmed' :
         status === 'Відмова' ? 'status-refused' :
@@ -4291,7 +4299,6 @@ function renderRouteCard(r, idx, sheetName) {
         status === 'Новий' ? '<span class="badge badge-new">Новий</span>' :
         status === 'Відмова' ? '<span class="badge badge-refused">Відмова</span>' : '';
 
-    const isPax = type.includes('Пасажир');
     const typeIcon = isPax ? '👤' : '📦';
     const displayDate = date ? formatTripDate(date) : '—';
     const isSelected = routeSelectedIds.has(rteId);
@@ -4300,8 +4307,8 @@ function renderRouteCard(r, idx, sheetName) {
     const safeSheet = (sheetName || '').replace(/'/g, "\\'");
     const cleanPhone = (phone || '').replace(/[^+\d]/g, '');
 
-    // Sections for expanded detail view
-    const sections = [
+    // Sections for expanded detail view — different for passengers vs parcels
+    const sections = isPax ? [
         { title: '📋 Основне', fields: [
             {label: 'ПІБ', key: 'Піб пасажира', value: name},
             {label: 'Телефон', key: 'Телефон пасажира', value: phone},
@@ -4326,6 +4333,34 @@ function renderRouteCard(r, idx, sheetName) {
             {label: 'Кількість місць', key: 'Кількість місць', value: seats},
             {label: 'Номер авто', key: 'Номер авто', value: auto},
             {label: 'Місце в авто', key: 'Місце в авто', value: seat},
+            {label: 'Водій', key: 'Водій', value: driver}
+        ]},
+        { title: '📝 Примітка', fields: [
+            {label: 'Примітка', key: 'Примітка', value: note}
+        ]}
+    ] : [
+        { title: '📦 Посилка', fields: [
+            {label: 'Відправник', key: 'Піб відправника', value: name},
+            {label: 'Тел. відправника', key: 'Телефон реєстратора', value: phone},
+            {label: 'Отримувач', key: 'Піб отримувача', value: receiver},
+            {label: 'Тел. отримувача', key: 'Телефон отримувача', value: receiverPhone},
+            {label: 'Напрям', key: 'Напрям', value: direction},
+            {label: 'Статус', key: 'Статус', value: status},
+            {label: 'Номер ТТН', key: 'Номер ТТН', value: ttn},
+            {label: 'Опис', key: 'Опис', value: description},
+            {label: 'Кількість', key: 'Кількість позицій', value: qty},
+            {label: 'Вага (кг)', key: 'Кг', value: weight}
+        ]},
+        { title: '💰 Фінанси', fields: [
+            {label: 'Сума', key: 'Сума', value: price},
+            {label: 'Валюта', key: 'Валюта', value: curr},
+            {label: 'Завдаток', key: 'Завдаток', value: deposit},
+            {label: 'Статус оплати', key: 'Статус оплати', value: payStatus}
+        ]},
+        { title: '🚐 Рейс', fields: [
+            {label: 'Адреса відправки', key: 'Адреса відправки', value: from},
+            {label: 'Адреса доставки', key: 'Адреса прибуття', value: to},
+            {label: 'Номер авто', key: 'Номер авто', value: auto},
             {label: 'Водій', key: 'Водій', value: driver}
         ]},
         { title: '📝 Примітка', fields: [
@@ -4363,7 +4398,7 @@ function renderRouteCard(r, idx, sheetName) {
                 </div>
                 ${dirLabel ? `<span class="card-direction ${dirCls}">${dirLabel}</span>` : ''}
                 <span class="route-card-phone">${phone}</span>
-                <span class="route-card-seats">${seats}м</span>
+                ${seats ? `<span class="route-card-seats">${isPax ? seats + 'м' : qty ? qty + 'шт' : ''}</span>` : ''}
                 <span class="route-card-date">${displayDate}</span>
                 ${seat ? `<span style="background:#e0e7ff;color:#3730a3;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;">💺 ${seat}</span>` : ''}
                 <span class="route-card-price">${price ? price + ' ' + curr : ''}</span>
@@ -4371,6 +4406,7 @@ function renderRouteCard(r, idx, sheetName) {
             <div class="route-card-info">
                 <span style="font-size:12px;">${typeIcon}</span>
                 <span class="route-card-name">${name}</span>
+                ${!isPax && receiver ? `<span style="color:var(--text-secondary);font-size:11px;">→ ${receiver}</span>` : ''}
                 <span style="color:var(--text-secondary);font-size:10px;">${rteId}</span>
                 ${lsBadge} ${payBadge}
             </div>
@@ -4378,7 +4414,10 @@ function renderRouteCard(r, idx, sheetName) {
             <div class="route-card-meta">
                 ${auto ? `<span>🚐 ${auto}</span>` : ''}
                 ${driver ? `<span>🧑 ${driver}</span>` : ''}
-                ${weight ? `<span>📦 ${weight}</span>` : ''}
+                ${weight ? `<span>⚖️ ${weight}кг</span>` : ''}
+                ${!isPax && ttn ? `<span>📋 ${ttn}</span>` : ''}
+                ${!isPax && description ? `<span>📦 ${description}</span>` : ''}
+                ${!isPax && qty ? `<span>📊 ${qty}шт</span>` : ''}
                 ${note ? `<span>📝 ${note.substring(0, 30)}${note.length > 30 ? '...' : ''}</span>` : ''}
             </div>
         </div>
