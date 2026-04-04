@@ -177,6 +177,7 @@ function doPost(e) {
       case 'getClientMessages':       result = apiGetClientMessages(body); break;
       case 'sendManagerMessage':      result = apiSendManagerMessage(body); break;
       case 'markClientRead':          result = apiMarkClientRead(body); break;
+      case 'getUnreadCounts':         result = apiGetUnreadCounts(body); break;
 
       default:
         result = { ok: false, error: 'Unknown action: ' + action };
@@ -1857,6 +1858,19 @@ function apiSendManagerMessage(body) {
   var msgId = 'MSG-' + new Date().getTime().toString(36).toUpperCase();
   sh.appendRow([msgId, cliId, new Date().toISOString(), 'manager', senderName, text, '', '', '']);
   return { ok: true, data: { message_id: msgId } };
+}
+
+function apiGetUnreadCounts(body) {
+  var sh = _getChatSheet();
+  var data = sh.getDataRange().getValues();
+  var counts = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][3] === 'client' && data[i][6] !== 'Так') {
+      var cid = String(data[i][1]);
+      counts[cid] = (counts[cid] || 0) + 1;
+    }
+  }
+  return { ok: true, data: counts };
 }
 
 function apiMarkClientRead(body) {

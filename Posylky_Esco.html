@@ -660,6 +660,8 @@ body {
 }
 .card-pkgid { color: var(--text-secondary); font-size: 10px; font-weight: 600; }
 .card-sender-recv { font-weight: 600; }
+.chat-unread-badge { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;line-height:1;animation:pulse-badge 2s infinite; }
+@keyframes pulse-badge { 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
 .card-address {
   display: flex; align-items: center; gap: 4px;
   font-size: 11px; color: var(--text-secondary);
@@ -2431,6 +2433,7 @@ let routeData = []; // current route sheet data
 let routeFilterType = 'all'; // all | pax | parcel
 let routeFilterStatus = 'all';
 let routeFilterPay = 'all';
+let _unreadCounts = {}; // { cli_id: count }
 let routeTypeFilter = 'all';
 let routeStatusFilter = 'all';
 let routePayFilter = 'all';
@@ -2926,6 +2929,7 @@ function renderCard(p) {
   const cliId = p['CLI_ID'] || '';
   const smartId = p['Ід_смарт'] || '';
   const tag = p['Тег'] || '';
+  const unreadCount = cliId ? (_unreadCounts[cliId] || 0) : 0;
   const isOpen = openCardId === pkgId;
 
   // Status class
@@ -3082,6 +3086,7 @@ function renderCard(p) {
           <div class="card-row2">
             <span class="card-pkgid">${pkgId}</span>
             <span class="card-sender-recv">👤 ${name || '—'} → ${receiver || '—'}</span>
+            ${unreadCount > 0 ? `<span class="chat-unread-badge" title="${unreadCount} нових повідомлень">${unreadCount}</span>` : ''}
             ${visCols.includes('leadBadge') ? leadBadge : ''} ${visCols.includes('payBadge') ? payBadge : ''} ${visCols.includes('checkBadge') ? checkBadge : ''}
           </div>
           ${visCols.includes('address') && (addressFrom || addressTo) ? `<div class="card-address">📍 ${addressFrom && addressTo ? addressFrom + ' → ' + addressTo : (addressFrom || addressTo)}</div>` : ''}
@@ -3934,6 +3939,10 @@ async function loadChatMessages() {
       _chatMessages = res.data;
       renderChatMessages();
       await apiPost('markClientRead', { cli_id: _chatCliId });
+      if (_unreadCounts[_chatCliId]) {
+        delete _unreadCounts[_chatCliId];
+        renderCards();
+      }
     }
   } catch(e) { console.error('Chat load error:', e); }
 }
@@ -5880,6 +5889,23 @@ function parseSmsText() {
   const weightMatch = text.match(/(\d+[.,]?\d*)\s*кг/i);
   const weight = weightMatch ? weightMatch[1].replace(',', '.') : '';
 
+  // TTN: 14-digit number (Nova Poshta tracking)
+  const ttnMatch = text.match(/(?:ттн|ТТН|ttn|TTN|номер|трек)[:\s]*(\d{14})/i) || text.match(/\b(\d{14})\b/);
+  const ttn = ttnMatch ? ttnMatch[1] : '';
+
+  // Quantity: "3шт", "3 шт", "3 позиції"
+  const qtyMatch = text.match(/(\d+)\s*(?:шт|позиц|місц|коробк|пакет)/i);
+  const qty = qtyMatch ? qtyMatch[1] : '';
+
+  // Estimated value: "500грн", "200 грн", "вартість 500"
+  const valueMatch = text.match(/(?:вартість|ціна|оцінка|цінність)[:\s]*(\d+)/i) || text.match(/(\d+)\s*(?:грн|uah|₴)/i);
+  const estValue = valueMatch ? valueMatch[1] : '';
+
+  // Description: "коробка і сумка", "документи", "одяг"
+  const descKeywords = ['коробка','сумка','пакет','документи','одяг','взуття','ліки','їжа','техніка','електроніка','іграшки','книги','косметика','посилка','особисті речі'];
+  const foundDescs = descKeywords.filter(k => text.toLowerCase().includes(k));
+  const description = foundDescs.length > 0 ? foundDescs.join(', ') : '';
+
   // NP: "Київ 174", "Одеса №5", "Львів відділення 12"
   const npMatch = text.match(/([\wа-яіїєґА-ЯІЇЄҐ']+)\s+(?:№|відділення\s*)?(\d{1,4})/);
 
@@ -5910,6 +5936,8 @@ function parseSmsText() {
     if (cleanPhones[1]) document.getElementById('fPhoneReceiver').value = cleanPhones[1];
     if (npMatch) document.getElementById('fCityNP').value = npMatch[1] + ' ' + npMatch[2];
     if (weight) document.getElementById('fWeight').value = weight;
+    if (qty) { var qEl = document.getElementById('fQty'); if (qEl) qEl.value = qty; }
+    if (description) { var dEl = document.getElementById('fDescription'); if (dEl) dEl.value = description; }
 
     // Open receiver section if data detected
     if (cleanPhones[1] || npMatch) {
@@ -5923,12 +5951,16 @@ function parseSmsText() {
     if (cleanPhones[0]) document.getElementById('fPhoneReceiverUE').value = cleanPhones[0];
     if (foundSwiss) document.getElementById('fAddressTo').value = foundSwiss;
     if (weight) document.getElementById('fWeightUE').value = weight;
+    if (ttn) document.getElementById('fTTN').value = ttn;
+    if (qty) document.getElementById('fQty').value = qty;
+    if (estValue) document.getElementById('fEstValueUE').value = estValue;
+    if (description) document.getElementById('fDescription').value = description;
   }
 
   // Check for duplicate
   if (cleanPhones[0]) checkDuplicatePhone(cleanPhones[0]);
 
-  const filled = [name, cleanPhones[0], weight, foundSwiss, npMatch ? 'NP' : ''].filter(Boolean);
+  const filled = [name, cleanPhones[0], weight, foundSwiss, npMatch ? 'NP' : '', ttn ? 'ТТН' : '', qty, estValue, description].filter(Boolean);
   showToast(`Розпізнано: ${filled.length} полів`, 'success');
 }
 
@@ -6106,10 +6138,11 @@ async function loadData() {
   showLoader();
 
   try {
-    const [dataRes, statsRes, routesRes] = await Promise.all([
+    const [dataRes, statsRes, routesRes, unreadRes] = await Promise.all([
       apiPost('getAll', { sheet: 'all', filter: {} }),
       apiPost('getStats', {}),
-      apiPost('getRoutesList', {})
+      apiPost('getRoutesList', {}),
+      apiPost('getUnreadCounts', {})
     ]);
 
     if (dataRes.ok) {
@@ -6126,6 +6159,10 @@ async function loadData() {
 
     if (statsRes.ok) {
       stats = statsRes.stats || {};
+    }
+
+    if (unreadRes && unreadRes.ok) {
+      _unreadCounts = unreadRes.data || {};
     }
 
     if (routesRes && routesRes.ok) {
