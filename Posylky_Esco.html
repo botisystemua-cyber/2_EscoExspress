@@ -1844,6 +1844,9 @@ body {
     <button class="bulk-btn btn-warn-bulk" onclick="bulkArchive()">
       <span class="bulk-icon">📦</span> Архівувати
     </button>
+    <button class="bulk-btn" onclick="openTagModal()">
+      <span class="bulk-icon">🏷</span> Теги
+    </button>
   </div>
 
   <!-- Segment 2: Verification -->
@@ -3102,6 +3105,7 @@ function renderCard(p) {
         ${controlCheck === 'В перевірці' ? `<button onclick="event.stopPropagation(); completeVerification('${pkgId}')" style="background:var(--success);color:#fff;">✅ Готово</button>` : ''}
         ${controlCheck === 'Готова до маршруту' ? `<span style="display:inline-flex;align-items:center;padding:6px 12px;background:#dcfce7;color:#166534;border-radius:8px;font-size:12px;font-weight:600;">✅ Готова</span>` : ''}
         <button onclick="event.stopPropagation(); openRouteModal('${pkgId}')">🚖 Маршрут</button>
+        <button onclick="event.stopPropagation(); openTagModal('${pkgId}')">🏷 Тег</button>
         ${leadStatus !== 'Невідомий' ? `<button onclick="event.stopPropagation(); setLeadUnknown('${pkgId}')" style="background:#fef3c7;color:#92400e;">❓ Невідомий</button>` : `<span style="display:inline-flex;align-items:center;padding:6px 12px;background:#fef3c7;color:#92400e;border-radius:8px;font-size:12px;font-weight:600;">❓ Невідомий</span>`}
         <button class="btn-danger" onclick="event.stopPropagation(); deleteRecord('${pkgId}')">🗑️</button>
       </div>
@@ -6227,6 +6231,131 @@ async function loadData() {
     showToast('Дані оновлено (' + allData.length + ' посилок)', 'success');
   } catch(e) {
     console.error('render error:', e);
+  }
+}
+
+// ===== [SECT-TAG] SMART SENDER TAGS =====
+const TAG_API_URL = 'https://botisystem.com/Esco_Express/smart_teg.php';
+var _tagTargetIds = [];
+
+function closeTagModal() {
+  var overlay = document.getElementById('tagModalOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function openTagModal(singlePkgId) {
+  _tagTargetIds = singlePkgId ? [singlePkgId] : getSelectedIds();
+  if (!_tagTargetIds.length) { showToast('Оберіть посилки', 'error'); return; }
+
+  var overlay = document.getElementById('tagModalOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'tagModalOverlay';
+    overlay.className = 'route-detail-overlay';
+    overlay.onclick = function(e) { if (e.target === overlay) closeTagModal(); };
+    document.body.appendChild(overlay);
+  }
+
+  var noSmart = _tagTargetIds.filter(function(id) {
+    var p = allData.find(function(x) { return x['PKG_ID'] === id; });
+    return !p || !p['Ід_смарт'] || String(p['Ід_смарт']).trim() === '';
+  });
+
+  var names = _tagTargetIds.map(function(id) {
+    var p = allData.find(function(x) { return x['PKG_ID'] === id; });
+    var ss = p ? String(p['Ід_смарт'] || '').trim() : '';
+    var nm = p ? (p['Піб відправника'] || id) : id;
+    return nm + (ss ? ' <span style="color:#7c3aed;">(SS: ' + ss + ')</span>' : '');
+  });
+
+  var info = _tagTargetIds.length === 1
+    ? 'Посилка: <b>' + names[0] + '</b>'
+    : 'Посилок: <b>' + _tagTargetIds.length + '</b> (' + names.slice(0,3).join(', ') + (_tagTargetIds.length > 3 ? '...' : '') + ')';
+  if (noSmart.length > 0) {
+    info += '<br><span style="color:var(--danger);">⚠️ ' + noSmart.length + ' без Ід_смарт — буде пропущено</span>';
+  }
+
+  var title = _tagTargetIds.length === 1 ? '🏷 Присвоїти тег' : '🏷 Теги (' + _tagTargetIds.length + ')';
+
+  overlay.innerHTML =
+    '<div class="route-detail-panel" style="max-width:400px;">' +
+      '<div class="route-modal-header">' +
+        '<span class="route-modal-title">' + title + '</span>' +
+        '<button class="route-modal-close" onclick="closeTagModal()">&times;</button>' +
+      '</div>' +
+      '<div class="route-modal-body">' +
+        '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;">Назва тегу</label>' +
+        '<input id="tagNameInput" type="text" placeholder="Введіть назву тегу..." ' +
+          'style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;box-sizing:border-box;" ' +
+          'onkeydown="if(event.key===\'Enter\')applyTag()">' +
+        '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px;">' + info + '</div>' +
+        '<div id="tagResult" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:600;max-height:200px;overflow-y:auto;"></div>' +
+      '</div>' +
+      '<div class="route-modal-footer">' +
+        '<button onclick="closeTagModal()" style="padding:8px 14px;border:none;border-radius:8px;background:#f1f5f9;color:var(--text-primary);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;">Скасувати</button>' +
+        '<button onclick="applyTag()" style="padding:8px 14px;border:none;border-radius:8px;background:var(--success);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;">🏷 Застосувати</button>' +
+      '</div>' +
+    '</div>';
+
+  overlay.classList.add('open');
+  setTimeout(function() {
+    var inp = document.getElementById('tagNameInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+async function applyTag() {
+  var inp = document.getElementById('tagNameInput');
+  var tagName = inp ? (inp.value || '').trim() : '';
+  if (!tagName) { showToast('Введіть назву тегу', 'error'); return; }
+
+  var targets = _tagTargetIds.map(function(id) {
+    var p = allData.find(function(x) { return x['PKG_ID'] === id; });
+    return {
+      pkgId: id,
+      smartId: p ? String(p['Ід_смарт'] || '').trim() : '',
+      name: p ? (p['Піб відправника'] || id) : id
+    };
+  }).filter(function(t) { return t.smartId; });
+
+  if (!targets.length) { showToast('Немає посилок з Ід_смарт', 'error'); return; }
+
+  var resultEl = document.getElementById('tagResult');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '⏳ Надсилаю тег «' + tagName + '» для ' + targets.length + ' контакт(ів)...';
+  resultEl.style.background = '#f0f9ff';
+  resultEl.style.color = '#0369a1';
+
+  var ok = 0, fail = 0, html = '';
+
+  for (var i = 0; i < targets.length; i++) {
+    var t = targets[i];
+    try {
+      var res = await fetch(TAG_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: t.smartId, tagName: tagName })
+      });
+      var data = await res.json();
+      if (data.state) {
+        ok++;
+        html += '<div style="color:#059669;">✅ ' + t.name + ' <span style="color:#7c3aed;font-size:10px;">(SS: ' + t.smartId + ')</span>' + (data.note ? ' — вже був' : '') + '</div>';
+      } else {
+        fail++;
+        html += '<div style="color:#dc2626;">❌ ' + t.name + ' <span style="color:#7c3aed;font-size:10px;">(SS: ' + t.smartId + ')</span>: ' + (data.error || 'Помилка') + '</div>';
+      }
+    } catch (e) {
+      fail++;
+      html += '<div style="color:#dc2626;">❌ ' + t.name + ' <span style="color:#7c3aed;font-size:10px;">(SS: ' + t.smartId + ')</span>: ' + e.message + '</div>';
+    }
+  }
+
+  resultEl.innerHTML = '<div style="margin-bottom:6px;font-size:12px;"><b>Результат:</b> ✅ ' + ok + ' / ❌ ' + fail + '</div>' + html;
+  resultEl.style.background = fail === 0 ? '#f0fdf4' : '#fef2f2';
+  resultEl.style.color = '#1f2937';
+
+  if (ok > 0) {
+    showToast('✅ Тег «' + tagName + '» додано: ' + ok + ' контакт(ів)', 'success');
   }
 }
 </script>
