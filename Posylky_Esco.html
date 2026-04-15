@@ -2241,7 +2241,9 @@ body {
             <div class="add-row-grid">
               <div class="add-row">
                 <label>Опис</label>
-                <input type="text" id="fDescription" placeholder="Опис вмісту">
+                <input type="text" id="fDescription" list="fDescriptionList" placeholder="Опис вмісту" autocomplete="off">
+                <datalist id="fDescriptionList"></datalist>
+                <div id="fDescriptionPicker" class="desc-picker"></div>
               </div>
               <div class="add-row">
                 <label>Кількість позицій</label>
@@ -3195,6 +3197,8 @@ function startInlineEdit(el, pkgId, col) {
 
   if (_isAddressField(col)) {
     _createAddressCombo(el, pkgId, col, currentVal, options || []);
+  } else if (col === 'Опис') {
+    _createDescriptionCombo(el, pkgId, col, currentVal);
   } else if (options) {
     _createQeDropdown(el, pkgId, col, currentVal, options);
   } else {
@@ -3209,6 +3213,60 @@ function startInlineEdit(el, pkgId, col) {
     el.appendChild(input);
     input.focus();
   }
+}
+
+function _createDescriptionCombo(el, pkgId, col, currentVal) {
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;width:100%;';
+
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'detail-inline-edit';
+  input.value = currentVal;
+  input.setAttribute('list', 'inlineDescList_' + pkgId);
+
+  var datalist = document.createElement('datalist');
+  datalist.id = 'inlineDescList_' + pkgId;
+  try {
+    var all = (typeof getAllDescriptions === 'function') ? getAllDescriptions() : [];
+    datalist.innerHTML = all.map(function(d){
+      return '<option value="' + String(d).replace(/"/g, '&quot;') + '">';
+    }).join('');
+  } catch (e) {}
+
+  var picker = document.createElement('div');
+  picker.className = 'desc-picker';
+  picker.style.cssText = 'max-width:100%;';
+
+  var savedAlready = false;
+  function doSave(val) {
+    if (savedAlready) return;
+    savedAlready = true;
+    try { if (val) saveCustomDescription(val); } catch (e) {}
+    saveInlineEdit(pkgId, col, val, el);
+  }
+
+  input.onblur = function() {
+    // Затримка, щоб клік по chip встиг відпрацювати
+    setTimeout(function() {
+      if (!el.contains(document.activeElement)) doSave(input.value);
+    }, 200);
+  };
+  input.onkeydown = function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); doSave(input.value); }
+    if (e.key === 'Escape') { savedAlready = true; restoreBlock(el, currentVal, pkgId, col); }
+  };
+
+  wrap.appendChild(input);
+  wrap.appendChild(datalist);
+  wrap.appendChild(picker);
+  el.appendChild(wrap);
+
+  try {
+    if (typeof renderDescCategoryPicker === 'function') renderDescCategoryPicker(picker, input);
+  } catch (e) {}
+
+  input.focus();
 }
 
 function _createAddressCombo(el, pkgId, col, currentVal, suggestions) {
@@ -5825,6 +5883,13 @@ function openAddForm() {
   clearAddForm();
   setAddDirection(addFormDirection);
   initSwissPoints();
+  // Ініціалізувати picker описів
+  try {
+    fillDescDatalist('fDescriptionList');
+    var picker = document.getElementById('fDescriptionPicker');
+    var input = document.getElementById('fDescription');
+    if (picker && input) renderDescCategoryPicker(picker, input);
+  } catch (e) {}
   document.getElementById('addFormOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -6123,6 +6188,9 @@ async function saveParcel() {
   try {
     const sheetName = dir === 'eu' ? 'Реєстрація ТТН єв-УК' : 'Реєстрація ТТН УК-єв';
     const res = await apiPost('addParcel', { sheet: sheetName, data });
+
+    // Запамʼятати новий опис у локальну базу
+    try { if (data['Опис']) saveCustomDescription(data['Опис']); } catch (e) {}
 
     if (res.ok) {
       // Add locally with correct frontend field names
@@ -6696,6 +6764,49 @@ async function applyTag() {
   box-shadow: 0 4px 12px rgba(16,185,129,0.3);
 }
 .verif-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ===== DESCRIPTION CATEGORY PICKER ===== */
+.desc-picker { margin-top: 6px; }
+.desc-cats-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 6px;
+}
+.desc-cat-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 10px;
+  background: #f3f4f6; color: #1f2937;
+  border: 1px solid #e5e7eb; border-radius: 999px;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: all 0.15s;
+}
+.desc-cat-chip:hover { background: #e5e7eb; }
+.desc-cat-chip.active {
+  background: var(--primary, #3b82f6); color: #fff;
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 2px 6px rgba(59,130,246,0.3);
+}
+.desc-cat-chip-custom { background: #fef3c7; border-color: #fde68a; }
+.desc-cat-chip-custom.active { background: #f59e0b; border-color: #f59e0b; }
+.desc-cat-emoji { font-size: 14px; }
+.desc-items-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  padding: 8px; background: #f9fafb;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+  max-height: 180px; overflow-y: auto;
+}
+.desc-item-chip {
+  padding: 5px 10px;
+  background: #fff; color: #374151;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  font-family: inherit; font-size: 12px;
+  cursor: pointer; white-space: nowrap;
+  transition: all 0.12s;
+}
+.desc-item-chip:hover {
+  background: var(--primary, #3b82f6); color: #fff;
+  border-color: var(--primary, #3b82f6);
+}
 </style>
 
 <div class="verif-overlay" id="verifOverlay">
@@ -6729,9 +6840,10 @@ async function applyTag() {
       <!-- Опис -->
       <div>
         <label class="verif-field-label">📝 Опис посилки <span style="color:var(--danger)">*</span></label>
-        <input type="text" class="verif-input" id="verifDesc" list="verifDescList" placeholder="Одяг, косметика, електроніка, документи..." autocomplete="off">
+        <input type="text" class="verif-input" id="verifDesc" list="verifDescList" placeholder="Почніть вводити або оберіть категорію нижче..." autocomplete="off">
         <datalist id="verifDescList"></datalist>
-        <div style="font-size:11px;color:#6b7280;margin-top:4px;">💡 Можна обрати зі списку або ввести свій</div>
+        <div id="verifDescPicker" class="desc-picker"></div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">💡 Натисніть категорію → оберіть готовий опис, або введіть свій (запамʼятається)</div>
       </div>
 
       <!-- Вага -->
@@ -6936,33 +7048,249 @@ var PHOTO_UPLOAD_URL = 'https://botisystem.com/Esco_Express/photo_upload.php';
 var verifCurrentPkg = null;
 var verifCurrentPhotoUrl = '';
 
-function buildDescSuggestions() {
-  // Збираємо унікальні непорожні описи з усіх посилок
-  var seen = {};
-  var list = [];
-  if (typeof allData !== 'undefined' && Array.isArray(allData)) {
-    for (var i = 0; i < allData.length; i++) {
-      var d = (allData[i]['Опис'] || '').toString().trim();
-      if (!d) continue;
-      var key = d.toLowerCase();
-      if (seen[key]) continue;
-      seen[key] = true;
-      list.push(d);
+// ===== DESCRIPTION CATEGORIES (shared across create/edit/verify) =====
+var DESC_CATEGORIES = [
+  { emoji: '📦', label: 'Коробки', items: [
+    'Крафтова коробка', 'Біла коробка',
+    'Коробка НП мала', 'Коробка НП велика', 'Коробка НП довга',
+    'Коробка зі взуттям',
+    'Коробка з ноутбуком', 'Коробка з Dyson', 'Коробка з телефоном', 'Коробка з PlayStation',
+    'Коробка з косметикою', 'Коробка з ботоксом', 'Коробка з ліками',
+    'Коробка зі солодощами', 'Коробка з пасками', 'Коробка з печивом',
+    'Зелена коробка Tom Ford', 'Коробка Canon', 'Коробка з мультипічкою', 'Коробка з системним блоком'
+  ]},
+  { emoji: '🧳', label: 'Валізи', items: [
+    'Валіза пластикова чорна', 'Валіза пластикова сіра', 'Валіза пластикова синя',
+    'Валіза пластикова бірюзова', 'Валіза пластикова вишнева',
+    'Валіза тканинна чорна', 'Валіза тканинна синя', 'Валіза тканинна коричнева',
+    '2 валізи', '3 валізи'
+  ]},
+  { emoji: '🎒', label: 'Рюкзаки', items: [
+    'Рюкзак чорний', 'Рюкзак синій', 'Рюкзак кольоровий',
+    'Рюкзак в стрейчі',
+    'Рюкзак з PlayStation', 'Рюкзак з ноутбуком'
+  ]},
+  { emoji: '🛍️', label: 'Сумки', items: [
+    'Сумка IKEA синя', 'Сумка MIGROS', 'Сумка ALDI', 'Сумка LIDL',
+    'Сумка BMW синя', 'Сумка BMW зелена',
+    'Сумка ATB', 'Сумка Сільпо', 'Сумка Метро', 'Сумка Ашан',
+    'Польська торба чорна', 'Польська торба синя', 'Польська торба червона клітка',
+    'Дорожня сумка', 'Тряпчана сумка',
+    'Сумка з візерунками', 'Сумка леопардова', 'Сумка зміїна'
+  ]},
+  { emoji: '🛒', label: 'Пакети', items: [
+    'Кульок "Україна" білий', 'Газета',
+    'Пакет АТБ', 'Пакет Метро', 'Пакет Сільпо', 'Пакет Рошен',
+    'Прозорий кульок',
+    'Жовтий кульок', 'Зелений кульок', 'Синій кульок BMW'
+  ]},
+  { emoji: '🌀', label: 'Змотки', items: [
+    'Змотка з ліками', 'Змотка з уколами', 'Змотка з ботоксом',
+    'Змотка з косметикою', 'Змотка зі солодощами',
+    'Змотка з книгами', 'Змотка з зошитами',
+    'Змотка з банками', 'Змотка з пляшками',
+    'Змотка з іграшками', 'Змотка з технікою',
+    'Змотка з дрібничками'
+  ]},
+  { emoji: '📄', label: 'Документи', items: [
+    'Файлик з документами', 'Папка', 'Посвідчення водія'
+  ]},
+  { emoji: '💰', label: 'Цінне', items: [
+    'Гроші в зіп-пакеті',
+    'Ноутбук у сумці', 'Ноутбук у коробці',
+    'Телефон', 'Навушники', 'Dyson', 'PlayStation'
+  ]},
+  { emoji: '🧰', label: 'Нестандарт', items: [
+    'Табуретка в стрейчі', 'Картина', 'Ракетка', 'Органайзер', 'Каністра',
+    'Вихлопна труба', 'Поличка', "Дерев'яна деталь"
+  ]},
+  { emoji: '📚', label: 'Масові', items: [
+    '2-3 предмети', '5+ предметів', '10+ предметів',
+    'Мішок', 'Багато кульків', 'Змішаний вантаж'
+  ]}
+];
+
+var CUSTOM_DESC_KEY = 'esco_custom_descriptions_v1';
+
+function getCustomDescriptions() {
+  try {
+    var raw = localStorage.getItem(CUSTOM_DESC_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+function saveCustomDescription(desc) {
+  if (!desc) return;
+  desc = String(desc).trim();
+  if (!desc) return;
+  // Якщо є серед базових — не зберігаємо
+  var lower = desc.toLowerCase();
+  for (var i = 0; i < DESC_CATEGORIES.length; i++) {
+    for (var j = 0; j < DESC_CATEGORIES[i].items.length; j++) {
+      if (DESC_CATEGORIES[i].items[j].toLowerCase() === lower) return;
     }
   }
-  // Базові підказки (якщо мало історичних даних)
-  var defaults = ['Одяг', 'Взуття', 'Косметика', 'Ліки', 'Документи', 'Електроніка', 'Продукти', 'Подарунки', 'Книги', 'Іграшки', 'Аксесуари'];
-  defaults.forEach(function(d){
-    if (!seen[d.toLowerCase()]) list.push(d);
-  });
-  list.sort(function(a,b){ return a.localeCompare(b, 'uk'); });
-
-  var dl = document.getElementById('verifDescList');
-  if (dl) {
-    dl.innerHTML = list.map(function(d){
-      return '<option value="' + d.replace(/"/g, '&quot;') + '">';
-    }).join('');
+  var custom = getCustomDescriptions();
+  for (var k = 0; k < custom.length; k++) {
+    if (custom[k].toLowerCase() === lower) return;
   }
+  custom.unshift(desc);
+  if (custom.length > 200) custom = custom.slice(0, 200);
+  try { localStorage.setItem(CUSTOM_DESC_KEY, JSON.stringify(custom)); } catch (e) {}
+}
+
+// Повертає унікальні описи для автокомпліту: базові + кастомні + з allData
+function getAllDescriptions() {
+  var seen = {};
+  var list = [];
+  DESC_CATEGORIES.forEach(function(cat) {
+    cat.items.forEach(function(it) {
+      var k = it.toLowerCase();
+      if (!seen[k]) { seen[k] = true; list.push(it); }
+    });
+  });
+  getCustomDescriptions().forEach(function(d) {
+    var k = d.toLowerCase();
+    if (!seen[k]) { seen[k] = true; list.push(d); }
+  });
+  if (typeof allData !== 'undefined' && Array.isArray(allData)) {
+    allData.forEach(function(p) {
+      var d = (p['Опис'] || '').toString().trim();
+      if (!d) return;
+      var k = d.toLowerCase();
+      if (!seen[k]) { seen[k] = true; list.push(d); }
+    });
+  }
+  return list;
+}
+
+function fillDescDatalist(datalistId) {
+  var dl = document.getElementById(datalistId);
+  if (!dl) return;
+  var all = getAllDescriptions().slice().sort(function(a,b){ return a.localeCompare(b, 'uk'); });
+  dl.innerHTML = all.map(function(d){
+    return '<option value="' + d.replace(/"/g, '&quot;') + '">';
+  }).join('');
+}
+
+// Рендерить chip picker: категорії (expand) → елементи
+function renderDescCategoryPicker(containerEl, inputEl) {
+  if (!containerEl || !inputEl) return;
+  containerEl.innerHTML = '';
+
+  var catsRow = document.createElement('div');
+  catsRow.className = 'desc-cats-row';
+
+  var itemsRow = document.createElement('div');
+  itemsRow.className = 'desc-items-row';
+  itemsRow.style.display = 'none';
+
+  var expanded = -1;
+
+  function renderItems(cat) {
+    itemsRow.innerHTML = '';
+    // Стандартні елементи категорії
+    cat.items.forEach(function(item){
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'desc-item-chip';
+      chip.textContent = item;
+      chip.onclick = function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        inputEl.value = item;
+        inputEl.focus();
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      itemsRow.appendChild(chip);
+    });
+    itemsRow.style.display = 'flex';
+  }
+
+  DESC_CATEGORIES.forEach(function(cat, idx){
+    var chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'desc-cat-chip';
+    chip.innerHTML = '<span class="desc-cat-emoji">' + cat.emoji + '</span> ' + cat.label;
+    chip.onclick = function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      catsRow.querySelectorAll('.desc-cat-chip').forEach(function(c){ c.classList.remove('active'); });
+      if (expanded === idx) {
+        itemsRow.style.display = 'none';
+        expanded = -1;
+      } else {
+        expanded = idx;
+        chip.classList.add('active');
+        renderItems(cat);
+      }
+    };
+    catsRow.appendChild(chip);
+  });
+
+  // Кастомні описи (з localStorage + allData) — окрема категорія наприкінці
+  var custom = [];
+  var seen = {};
+  DESC_CATEGORIES.forEach(function(c){ c.items.forEach(function(i){ seen[i.toLowerCase()] = true; }); });
+  getCustomDescriptions().forEach(function(d){
+    var k = d.toLowerCase();
+    if (!seen[k]) { seen[k] = true; custom.push(d); }
+  });
+  if (typeof allData !== 'undefined' && Array.isArray(allData)) {
+    allData.forEach(function(p){
+      var d = (p['Опис'] || '').toString().trim();
+      if (!d) return;
+      var k = d.toLowerCase();
+      if (!seen[k]) { seen[k] = true; custom.push(d); }
+    });
+  }
+  if (custom.length > 0) {
+    var chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'desc-cat-chip desc-cat-chip-custom';
+    chip.innerHTML = '<span class="desc-cat-emoji">⭐</span> Мої (' + custom.length + ')';
+    chip.onclick = function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      catsRow.querySelectorAll('.desc-cat-chip').forEach(function(c){ c.classList.remove('active'); });
+      if (expanded === 'custom') {
+        itemsRow.style.display = 'none';
+        expanded = -1;
+      } else {
+        expanded = 'custom';
+        chip.classList.add('active');
+        itemsRow.innerHTML = '';
+        custom.forEach(function(item){
+          var ic = document.createElement('button');
+          ic.type = 'button';
+          ic.className = 'desc-item-chip';
+          ic.textContent = item;
+          ic.onclick = function(ev2){
+            ev2.preventDefault();
+            ev2.stopPropagation();
+            inputEl.value = item;
+            inputEl.focus();
+            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+          };
+          itemsRow.appendChild(ic);
+        });
+        itemsRow.style.display = 'flex';
+      }
+    };
+    catsRow.appendChild(chip);
+  }
+
+  containerEl.appendChild(catsRow);
+  containerEl.appendChild(itemsRow);
+}
+
+// Застарілий API (для buildDescSuggestions у старому коді)
+function buildDescSuggestions() {
+  fillDescDatalist('verifDescList');
+  var picker = document.getElementById('verifDescPicker');
+  var input = document.getElementById('verifDesc');
+  if (picker && input) renderDescCategoryPicker(picker, input);
 }
 
 function openVerificationForm(pkgObj) {
@@ -7091,6 +7419,9 @@ function verifSave() {
   var btn = document.getElementById('verifSaveBtn');
   btn.disabled = true;
   btn.textContent = '⏳ Зберігаю...';
+
+  // Запамʼятати опис у локальну базу для автокомпліту
+  try { saveCustomDescription(опис); } catch (e) {}
 
   apiPost('completeVerification', {
     pkg_id: verifCurrentPkg['PKG_ID'],
