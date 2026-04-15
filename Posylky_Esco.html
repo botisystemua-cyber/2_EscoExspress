@@ -6729,7 +6729,9 @@ async function applyTag() {
       <!-- Опис -->
       <div>
         <label class="verif-field-label">📝 Опис посилки <span style="color:var(--danger)">*</span></label>
-        <textarea class="verif-textarea" id="verifDesc" placeholder="Що всередині (одяг, косметика, електроніка...)"></textarea>
+        <input type="text" class="verif-input" id="verifDesc" list="verifDescList" placeholder="Одяг, косметика, електроніка, документи..." autocomplete="off">
+        <datalist id="verifDescList"></datalist>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">💡 Можна обрати зі списку або ввести свій</div>
       </div>
 
       <!-- Вага -->
@@ -6934,9 +6936,40 @@ var PHOTO_UPLOAD_URL = 'https://botisystem.com/Esco_Express/photo_upload.php';
 var verifCurrentPkg = null;
 var verifCurrentPhotoUrl = '';
 
+function buildDescSuggestions() {
+  // Збираємо унікальні непорожні описи з усіх посилок
+  var seen = {};
+  var list = [];
+  if (typeof allData !== 'undefined' && Array.isArray(allData)) {
+    for (var i = 0; i < allData.length; i++) {
+      var d = (allData[i]['Опис'] || '').toString().trim();
+      if (!d) continue;
+      var key = d.toLowerCase();
+      if (seen[key]) continue;
+      seen[key] = true;
+      list.push(d);
+    }
+  }
+  // Базові підказки (якщо мало історичних даних)
+  var defaults = ['Одяг', 'Взуття', 'Косметика', 'Ліки', 'Документи', 'Електроніка', 'Продукти', 'Подарунки', 'Книги', 'Іграшки', 'Аксесуари'];
+  defaults.forEach(function(d){
+    if (!seen[d.toLowerCase()]) list.push(d);
+  });
+  list.sort(function(a,b){ return a.localeCompare(b, 'uk'); });
+
+  var dl = document.getElementById('verifDescList');
+  if (dl) {
+    dl.innerHTML = list.map(function(d){
+      return '<option value="' + d.replace(/"/g, '&quot;') + '">';
+    }).join('');
+  }
+}
+
 function openVerificationForm(pkgObj) {
   verifCurrentPkg = pkgObj;
   verifCurrentPhotoUrl = pkgObj['Фото посилки'] || '';
+
+  buildDescSuggestions();
 
   document.getElementById('verifPkgTitle').textContent =
     (pkgObj['Номер ТТН'] || '—') + ' • ' + (pkgObj['Піб відправника'] || '—');
