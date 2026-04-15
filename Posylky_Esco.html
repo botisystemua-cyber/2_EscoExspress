@@ -6620,6 +6620,85 @@ async function applyTag() {
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(16,185,129,0.4);
 }
+
+/* ===== Quantity square (bottom-right) ===== */
+.ttn-qty-square {
+  position: absolute;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 96px);
+  z-index: 12;
+  width: 64px; height: 64px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.7);
+  border: 2px solid rgba(255,255,255,0.3);
+  color: #fff;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  transition: transform 0.15s, background 0.2s, border-color 0.2s;
+  user-select: none;
+}
+.ttn-qty-square:active { transform: scale(0.95); }
+.ttn-qty-square .lbl { font-size: 9px; font-weight: 700; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+.ttn-qty-square .num { font-size: 28px; font-weight: 900; line-height: 1; font-family: "SF Mono", Monaco, monospace; }
+.ttn-qty-square.multi { background: rgba(245,158,11,0.9); border-color: #fff; }
+.ttn-qty-square.pulse { animation: ttnQtyPulse 0.9s ease-out 1; }
+@keyframes ttnQtyPulse {
+  0%   { transform: scale(1);   box-shadow: 0 0 0 0 rgba(245,158,11,0.7); }
+  50%  { transform: scale(1.15); box-shadow: 0 0 0 18px rgba(245,158,11,0); }
+  100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+}
+
+/* Popup з пресетами */
+.ttn-qty-popup {
+  position: absolute;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 170px);
+  z-index: 13;
+  background: rgba(30,41,59,0.97);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 14px;
+  padding: 12px;
+  width: 220px;
+  color: #fff;
+  display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.ttn-qty-popup.open { display: block; }
+.ttn-qty-popup-title { font-size: 11px; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.ttn-qty-popup-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+.ttn-qty-popup-btn {
+  height: 40px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit; font-size: 15px; font-weight: 800;
+  cursor: pointer;
+}
+.ttn-qty-popup-btn:hover { background: rgba(255,255,255,0.18); }
+.ttn-qty-popup-btn.active { background: #f59e0b; border-color: #f59e0b; }
+.ttn-qty-popup-custom { display: flex; gap: 6px; align-items: center; }
+.ttn-qty-popup-custom input {
+  flex: 1;
+  height: 40px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  color: #fff; padding: 0 10px;
+  font-family: inherit; font-size: 15px; font-weight: 700; text-align: center;
+  outline: none;
+}
+.ttn-qty-popup-custom input:focus { border-color: #10b981; }
+.ttn-qty-popup-custom button {
+  height: 40px; padding: 0 12px;
+  background: #10b981; border: none; border-radius: 8px;
+  color: #fff; font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+}
 </style>
 
 <div class="ttn-scan-overlay" id="ttnScanOverlay">
@@ -6646,6 +6725,31 @@ async function applyTag() {
 
   <!-- Історія сканованих посилок з кількістю місць -->
   <div class="ttn-scan-history" id="ttnScanHistory"></div>
+
+  <!-- Квадрат кількості місць (справа-знизу) -->
+  <div class="ttn-qty-square" id="ttnQtySquare" onclick="ttnQtyToggle()">
+    <span class="lbl">МІСЦЬ</span>
+    <span class="num" id="ttnQtyNum">1</span>
+  </div>
+
+  <!-- Popup з пресетами -->
+  <div class="ttn-qty-popup" id="ttnQtyPopup">
+    <div class="ttn-qty-popup-title">Скільки коробок під цей ТТН?</div>
+    <div class="ttn-qty-popup-grid" id="ttnQtyPopupGrid">
+      <button class="ttn-qty-popup-btn" data-qty="1" onclick="ttnQtySet(1)">1</button>
+      <button class="ttn-qty-popup-btn" data-qty="2" onclick="ttnQtySet(2)">2</button>
+      <button class="ttn-qty-popup-btn" data-qty="3" onclick="ttnQtySet(3)">3</button>
+      <button class="ttn-qty-popup-btn" data-qty="4" onclick="ttnQtySet(4)">4</button>
+      <button class="ttn-qty-popup-btn" data-qty="5" onclick="ttnQtySet(5)">5</button>
+      <button class="ttn-qty-popup-btn" data-qty="6" onclick="ttnQtySet(6)">6</button>
+      <button class="ttn-qty-popup-btn" data-qty="7" onclick="ttnQtySet(7)">7</button>
+      <button class="ttn-qty-popup-btn" data-qty="10" onclick="ttnQtySet(10)">10</button>
+    </div>
+    <div class="ttn-qty-popup-custom">
+      <input type="number" id="ttnQtyCustomInput" placeholder="Свій №" min="1" max="99" inputmode="numeric">
+      <button onclick="ttnQtyApplyCustom()">OK</button>
+    </div>
+  </div>
 
   <div class="ttn-scan-toast" id="ttnToast">
     <div class="ttn-toast-icon" id="ttnToastIcon">✅</div>
@@ -6798,49 +6902,6 @@ async function applyTag() {
   box-shadow: 0 4px 12px rgba(16,185,129,0.3);
 }
 .verif-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.verif-qty-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.verif-qty-btn {
-  width: 44px; height: 44px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  background: #f3f4f6;
-  font-family: inherit; font-size: 22px; font-weight: 700;
-  cursor: pointer; flex-shrink: 0;
-}
-.verif-qty-btn:hover { background: #e5e7eb; }
-.verif-qty-main {
-  width: 72px; height: 44px;
-  text-align: center; font-size: 20px; font-weight: 800;
-  flex-shrink: 0;
-}
-.verif-qty-preset:hover { background: #f3f4f6; }
-.verif-qty-preset.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
-.verif-qty-current { padding: 8px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; }
-.verif-qty-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.verif-qty-chip {
-  min-width: 36px; height: 36px;
-  border-radius: 8px; border: 1px solid #d1d5db;
-  background: #fff; cursor: pointer;
-  font-family: inherit; font-size: 14px; font-weight: 700;
-  color: #4b5563;
-}
-.verif-qty-chip.active { background: #f59e0b; border-color: #f59e0b; color: #fff; }
-
-.verif-qty-reset {
-  background: #fee2e2 !important;
-  border-color: #fecaca !important;
-  color: #dc2626 !important;
-  font-size: 14px !important;
-}
-.verif-qty-reset:hover { background: #fecaca !important; }
-.verif-qty-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.verif-qty-preset {
-  min-width: 44px; height: 44px;
-  border-radius: 10px; border: 1px solid #d1d5db;
-  background: #fff; cursor: pointer;
-  font-family: inherit; font-size: 16px; font-weight: 700;
-  color: #4b5563;
-}
 
 /* ===== DESCRIPTION CATEGORY PICKER ===== */
 .desc-picker { margin-top: 6px; }
@@ -6929,30 +6990,9 @@ async function applyTag() {
         <input type="number" step="0.1" min="0" inputmode="decimal" class="verif-input" id="verifWeight" placeholder="напр. 2.3">
       </div>
 
-      <!-- Кількість місць -->
-      <div>
-        <label class="verif-field-label">📦 Кількість місць під цей ТТН</label>
-        <div class="verif-qty-presets">
-          <button type="button" class="verif-qty-preset" data-qty="1" onclick="verifSetQtyTotal(1)">1</button>
-          <button type="button" class="verif-qty-preset" data-qty="2" onclick="verifSetQtyTotal(2)">2</button>
-          <button type="button" class="verif-qty-preset" data-qty="3" onclick="verifSetQtyTotal(3)">3</button>
-          <button type="button" class="verif-qty-preset" data-qty="4" onclick="verifSetQtyTotal(4)">4</button>
-          <button type="button" class="verif-qty-preset" data-qty="5" onclick="verifSetQtyTotal(5)">5</button>
-          <button type="button" class="verif-qty-preset verif-qty-reset" onclick="verifSetQtyTotal(1)" title="Скинути до 1">✕</button>
-        </div>
-        <div class="verif-qty-row" style="margin-top:8px;">
-          <button type="button" class="verif-qty-btn" onclick="verifAdjQtyTotal(-1)">−</button>
-          <input type="number" min="1" max="99" inputmode="numeric" class="verif-input verif-qty-main" id="verifQtyTotal" value="1" oninput="verifRebuildQtyChips()" placeholder="1">
-          <button type="button" class="verif-qty-btn" onclick="verifAdjQtyTotal(1)">+</button>
-          <span style="font-size:12px;color:#6b7280;margin-left:6px;">коробок</span>
-        </div>
-        <div class="verif-qty-current" id="verifQtyCurrentBox" style="display:none;margin-top:8px;">
-          <span style="font-size:12px;color:#6b7280;font-weight:600;">Яку саме коробку зараз перевіряєш?</span>
-          <div class="verif-qty-chips" id="verifQtyChips"></div>
-          <input type="hidden" id="verifQty" value="1">
-        </div>
-        <div id="verifQtyHint" style="font-size:11px;color:#6b7280;margin-top:6px;">💡 За замовчуванням 1. Можна вибрати кнопку, вписати довільне число, або ✕ щоб скинути.</div>
-      </div>
+      <!-- Приховані поля кількості місць (значення виставляється з квадратика на сканері) -->
+      <input type="hidden" id="verifQtyTotal" value="1">
+      <input type="hidden" id="verifQty" value="1">
 
       <!-- Коментар -->
       <div>
@@ -6979,6 +7019,73 @@ var ttnDataChanged = false; // якщо щось оновили в БД — он
 
 // Статистика сесії: список ТТН із кількістю місць >1 (для зведення в кінці)
 var ttnSessionMulti = []; // [{ttn, cur, tot}]
+
+// Поточне значення квадратика «кількість місць» (використовується при відкритті форми)
+var ttnQtyValue = 1;
+
+function ttnQtyUpdateUI() {
+  var num = document.getElementById('ttnQtyNum');
+  var sq = document.getElementById('ttnQtySquare');
+  if (!num || !sq) return;
+  num.textContent = ttnQtyValue;
+  sq.classList.toggle('multi', ttnQtyValue > 1);
+  // Підсвітити активну кнопку в popup
+  document.querySelectorAll('#ttnQtyPopupGrid .ttn-qty-popup-btn').forEach(function(b){
+    b.classList.toggle('active', parseInt(b.getAttribute('data-qty'), 10) === ttnQtyValue);
+  });
+}
+
+function ttnQtyToggle() {
+  var p = document.getElementById('ttnQtyPopup');
+  if (p.classList.contains('open')) {
+    p.classList.remove('open');
+  } else {
+    p.classList.add('open');
+    // Закривати при кліку поза popup — додаємо listener
+    setTimeout(function(){
+      document.addEventListener('click', ttnQtyOutsideClick, { once: true });
+    }, 0);
+  }
+}
+function ttnQtyOutsideClick(ev) {
+  var p = document.getElementById('ttnQtyPopup');
+  var sq = document.getElementById('ttnQtySquare');
+  if (!p || !sq) return;
+  if (p.contains(ev.target) || sq.contains(ev.target)) {
+    // Клік всередині — повторно вішаємо listener
+    setTimeout(function(){
+      document.addEventListener('click', ttnQtyOutsideClick, { once: true });
+    }, 0);
+    return;
+  }
+  p.classList.remove('open');
+}
+
+function ttnQtySet(n) {
+  n = parseInt(n, 10);
+  if (isNaN(n) || n < 1) n = 1;
+  if (n > 99) n = 99;
+  ttnQtyValue = n;
+  ttnQtyUpdateUI();
+  document.getElementById('ttnQtyPopup').classList.remove('open');
+}
+
+function ttnQtyApplyCustom() {
+  var inp = document.getElementById('ttnQtyCustomInput');
+  var v = parseInt(inp.value, 10);
+  if (isNaN(v) || v < 1) { inp.focus(); return; }
+  ttnQtySet(v);
+  inp.value = '';
+}
+
+function ttnQtyPulse() {
+  var sq = document.getElementById('ttnQtySquare');
+  if (!sq) return;
+  sq.classList.remove('pulse');
+  // Trigger reflow для перезапуску анімації
+  void sq.offsetWidth;
+  sq.classList.add('pulse');
+}
 
 // Історія сканування в поточній сесії (відображається на оверлеї сканера)
 // Елемент: { ttn, icon, status, qtyTot, qtyCur }
@@ -7033,6 +7140,10 @@ function openScanner() {
   ttnScanHistory = [];
   ttnRenderScanHistory();
   document.getElementById('ttnCounter').textContent = '📊 0';
+  // Quantity square — скинути до 1
+  ttnQtyValue = 1;
+  ttnQtyUpdateUI();
+  document.getElementById('ttnQtyPopup').classList.remove('open');
 }
 
 function closeScanner() {
@@ -7119,6 +7230,9 @@ function ttnOnScanSuccess(decodedText) {
 
   document.getElementById('ttnLastCode').textContent = decodedText;
   document.getElementById('ttnLastBar').classList.add('show');
+
+  // Привертаємо увагу до квадрата кількості — пульс
+  ttnQtyPulse();
 
   ttnShowToast({ variant: '', icon: '⏳', label: 'Перевірка...', value: decodedText, status: '' });
 
@@ -7477,13 +7591,16 @@ function openVerificationForm(pkgObj) {
   document.getElementById('verifWeight').value = pkgObj['Кг'] || '';
   document.getElementById('verifComment').value = pkgObj['Примітка'] || '';
 
-  // Кількість місць: пріоритет — значення з БД, далі 1
+  // Кількість місць: пріоритет — значення з квадратика сканера, далі БД, далі 1
   var qCur = 1, qTot = 1;
-  var storedTot = parseInt(pkgObj['Кількість місць'] || pkgObj['Місць'] || '', 10);
-  if (storedTot > 0) { qTot = storedTot; qCur = parseInt(pkgObj['Поточне місце'] || '1', 10) || 1; }
+  if (ttnIsScanning && ttnQtyValue > 0) {
+    qTot = ttnQtyValue;
+  } else {
+    var storedTot = parseInt(pkgObj['Кількість місць'] || pkgObj['Місць'] || '', 10);
+    if (storedTot > 0) { qTot = storedTot; qCur = parseInt(pkgObj['Поточне місце'] || '1', 10) || 1; }
+  }
   document.getElementById('verifQtyTotal').value = qTot;
   document.getElementById('verifQty').value = qCur;
-  verifRebuildQtyChips();
 
   var preview = document.getElementById('verifPhotoPreview');
   var placeholder = document.getElementById('verifPhotoPlaceholder');
@@ -7571,55 +7688,6 @@ function verifRetakePhoto() {
   verifPickPhoto();
 }
 
-function verifAdjQtyTotal(delta) {
-  var t = document.getElementById('verifQtyTotal');
-  var tot = Math.max(1, Math.min(99, (parseInt(t.value, 10) || 1) + delta));
-  t.value = tot;
-  verifRebuildQtyChips();
-}
-
-function verifSetQtyTotal(n) {
-  document.getElementById('verifQtyTotal').value = n;
-  verifRebuildQtyChips();
-}
-
-function verifRebuildQtyChips() {
-  var tot = Math.max(1, Math.min(99, parseInt(document.getElementById('verifQtyTotal').value, 10) || 1));
-  document.getElementById('verifQtyTotal').value = tot;
-
-  // Підсвічуємо активний preset
-  document.querySelectorAll('.verif-qty-preset[data-qty]').forEach(function(b){
-    b.classList.toggle('active', parseInt(b.getAttribute('data-qty'), 10) === tot);
-  });
-
-  var curInput = document.getElementById('verifQty');
-  var chipsEl = document.getElementById('verifQtyChips');
-  var currentBox = document.getElementById('verifQtyCurrentBox');
-
-  if (tot <= 1) {
-    currentBox.style.display = 'none';
-    curInput.value = 1;
-    return;
-  }
-  currentBox.style.display = 'block';
-  var cur = Math.max(1, Math.min(tot, parseInt(curInput.value, 10) || 1));
-  curInput.value = cur;
-  chipsEl.innerHTML = '';
-  for (var i = 1; i <= tot; i++) {
-    (function(n){
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'verif-qty-chip' + (n === cur ? ' active' : '');
-      b.textContent = n;
-      b.onclick = function() {
-        curInput.value = n;
-        verifRebuildQtyChips();
-      };
-      chipsEl.appendChild(b);
-    })(i);
-  }
-}
-
 function verifSave() {
   if (!verifCurrentPkg) return;
   var err = document.getElementById('verifError');
@@ -7677,6 +7745,9 @@ function verifSave() {
         ttnSessionMulti.push({ ttn: ttnVal, cur: qtyCur, tot: qtyTot });
       }
       closeVerificationForm();
+      // Скинути квадратик кількості на 1 для наступного ТТН
+      ttnQtyValue = 1;
+      ttnQtyUpdateUI();
       // Після закриття форми якщо сканер ще активний — продовжити, інакше просто оновити дані
       if (ttnIsScanning) {
         ttnResumeScan();
