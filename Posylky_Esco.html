@@ -6928,21 +6928,13 @@ async function applyTag() {
 .desc-cat-chip-custom.active { background: #f59e0b; border-color: #f59e0b; }
 .desc-cat-emoji { font-size: 14px; }
 .desc-items-row {
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-wrap: wrap; gap: 5px;
   padding: 10px; background: #f9fafb;
   border: 1px solid #e5e7eb; border-radius: 8px;
-  max-height: 260px; overflow-y: auto;
+  max-height: 240px; overflow-y: auto;
 }
-.desc-sub-group { display: flex; flex-direction: column; gap: 4px; }
-.desc-sub-label {
-  font-size: 10px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0.6px; color: #6b7280;
-  padding: 2px 4px;
-  border-left: 3px solid var(--primary, #3b82f6);
-}
-.desc-sub-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .desc-item-chip {
-  padding: 5px 10px;
+  padding: 6px 10px;
   background: #fff; color: #374151;
   border: 1px solid #d1d5db; border-radius: 6px;
   font-family: inherit; font-size: 12px;
@@ -6952,6 +6944,51 @@ async function applyTag() {
 .desc-item-chip:hover {
   background: var(--primary, #3b82f6); color: #fff;
   border-color: var(--primary, #3b82f6);
+}
+
+/* Рядок "шляху" — показує обрану категорію + кнопка скинути */
+.desc-path-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  background: #eff6ff; border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.desc-path-crumb { color: #1e40af; font-weight: 600; }
+.desc-path-crumb b { font-weight: 800; }
+.desc-cat-chip-reset {
+  background: #fee2e2 !important;
+  border-color: #fecaca !important;
+  color: #b91c1c !important;
+  margin-left: auto;
+  padding: 4px 10px !important;
+}
+.desc-cat-chip-reset:hover {
+  background: #fecaca !important;
+}
+/* "ще..." — показати решту */
+.desc-cat-chip-more {
+  background: #fff7ed !important;
+  border-color: #fed7aa !important;
+  color: #9a3412 !important;
+  font-style: italic;
+}
+.desc-cat-chip-more:hover {
+  background: #fed7aa !important;
+}
+/* Чипи підтипу (коротші, темніші) */
+.desc-sub-chip {
+  background: #fff !important;
+  border: 1px solid #d1d5db !important;
+  color: #1f2937 !important;
+  font-size: 13px !important;
+  padding: 8px 14px !important;
+}
+.desc-sub-chip:hover {
+  background: var(--primary, #3b82f6) !important;
+  color: #fff !important;
+  border-color: var(--primary, #3b82f6) !important;
 }
 
 /* Дропдаун автопідказок під verifDesc */
@@ -7380,78 +7417,72 @@ var verifCurrentPkg = null;
 var verifCurrentPhotoUrl = '';
 
 // ===== DESCRIPTION CATEGORIES (shared across create/edit/verify) =====
-// Структура: кожна категорія має subs: [{ label, items: [...] }]
-// items розраховується автоматично з subs для зворотної сумісності
+// Прогресивний формат: клік по категорії → input = label; клік по sub → input = "label sub"
+// subs — плоский масив коротких ярликів (підтипів)
 var DESC_CATEGORIES = [
-  { emoji: '📦', label: 'Коробки', subs: [
-    { label: 'Крафт', items: ['Коробка крафт', 'Коробка крафт плоска', 'Коробка крафт мікс', 'Коробка крафт взуття'] },
-    { label: 'Біла', items: ['Біла коробка', 'Біла коробка мікс', 'Біла коробка взуття'] },
-    { label: 'Чорна', items: ['Чорна коробка', 'Чорна коробка взуття'] },
-    { label: 'Нова Пошта', items: ['Коробка НП мала', 'Коробка НП велика', 'Коробка НП довга'] },
-    { label: 'Кольорова', items: ['Кольорова коробка косметика', 'Кольорова коробка лампи', 'Кольорова коробка техніка'] },
-    { label: 'Техніка', items: ['Коробка ноутбук', 'Коробка Dyson', 'Коробка PlayStation', 'Коробка телефон', 'Коробка Canon', 'Коробка мультипічка', 'Коробка системний блок'] },
-    { label: 'Вміст', items: ['Коробка косметика', 'Коробка ботокс', 'Коробка ліки', 'Коробка солодощі', 'Коробка паски', 'Коробка печиво', 'Зелена коробка Tom Ford'] }
+  { emoji: '📦', label: 'Коробка', subs: [
+    'крафт', 'біла', 'чорна', 'НП мала', 'НП велика', 'НП довга',
+    'кольорова', 'взуття', 'ноутбук', 'Dyson', 'PlayStation',
+    'телефон', 'Canon', 'мультипічка', 'системний блок',
+    'з косметикою', 'з ботоксом', 'з ліками', 'зі солодощами',
+    'з пасками', 'з печивом', 'Tom Ford зелена',
+    'крафт плоска', 'крафт мікс', 'крафт взуття',
+    'біла мікс', 'біла взуття', 'чорна взуття',
+    'кольорова косметика', 'кольорова лампи', 'кольорова техніка'
   ]},
-  { emoji: '🧳', label: 'Валізи', subs: [
-    { label: 'Пластик', items: ['Валіза пластикова чорна', 'Валіза пластикова сіра', 'Валіза пластикова синя', 'Валіза пластикова бірюзова', 'Валіза пластикова вишнева', 'Велика пластикова валіза', 'Мала пластикова валіза'] },
-    { label: 'Тканина', items: ['Валіза тканинна чорна', 'Валіза тканинна синя', 'Валіза тканинна коричнева', 'Дорожня тканинна валіза'] },
-    { label: 'Кілька', items: ['2 валізи', '3 валізи'] }
+  { emoji: '🧳', label: 'Валіза', subs: [
+    'пластикова чорна', 'пластикова сіра', 'пластикова синя',
+    'пластикова бірюзова', 'пластикова вишнева',
+    'тканинна чорна', 'тканинна синя', 'тканинна коричнева',
+    'дорожня тканинна', 'велика', 'мала', '2 штуки', '3 штуки'
   ]},
-  { emoji: '🎒', label: 'Рюкзаки', subs: [
-    { label: 'Тряпчаний', items: ['Рюкзак чорний', 'Рюкзак синій', 'Рюкзак кольоровий', 'Рюкзак у стрейчі'] },
-    { label: 'Техніка', items: ['Рюкзак з ноутбуком', 'Рюкзак з PlayStation'] }
+  { emoji: '🎒', label: 'Рюкзак', subs: [
+    'чорний', 'синій', 'кольоровий', 'у стрейчі',
+    'з ноутбуком', 'з PlayStation'
   ]},
-  { emoji: '🛍️', label: 'Сумки', subs: [
-    { label: 'Польська клітка', items: ['Польська торба чорна', 'Польська торба синя', 'Польська торба червона клітка'] },
-    { label: 'Тряпчана', items: ['Тряпчана сумка', 'Сумка з візерунками'] },
-    { label: 'Дорожня', items: ['Дорожня сумка', 'Велика дорожня сумка'] },
-    { label: 'Бренд', items: ['Сумка IKEA', 'Сумка IKEA синя', 'Сумка MIGROS', 'Сумка ALDI', 'Сумка LIDL', 'Сумка ATB', 'Сумка Сільпо', 'Сумка Метро', 'Сумка Ашан'] },
-    { label: 'Дизайнерська', items: ['Сумка леопардова', 'Сумка зміїна'] },
-    { label: 'Авто', items: ['Сумка BMW синя', 'Сумка BMW зелена'] }
+  { emoji: '🛍️', label: 'Сумка', subs: [
+    'тряпчана', 'дорожня', 'польська клітка', 'леопардова', 'зміїна',
+    'IKEA', 'IKEA синя', 'MIGROS', 'ALDI', 'LIDL',
+    'ATB', 'Сільпо', 'Метро', 'Ашан',
+    'BMW синя', 'BMW зелена', 'з візерунками', 'велика дорожня'
   ]},
-  { emoji: '🛒', label: 'Пакети', subs: [
-    { label: 'Білі', items: ['Кульок Україна', 'Білий кульок', 'Кульок газета'] },
-    { label: 'Магазин', items: ['Пакет АТБ', 'Пакет Сільпо', 'Пакет Метро', 'Пакет Рошен', 'Пакет Ашан'] },
-    { label: 'Кольоровий', items: ['Жовтий кульок', 'Зелений кульок', 'Синій кульок BMW', 'Фіолетовий кульок', 'Прозорий кульок'] }
+  { emoji: '🛒', label: 'Пакет', subs: [
+    'Україна', 'газета', 'АТБ', 'Сільпо', 'Метро', 'Рошен', 'Ашан',
+    'білий', 'жовтий', 'зелений', 'синій BMW', 'фіолетовий', 'прозорий'
   ]},
-  { emoji: '🌀', label: 'Змотки', subs: [
-    { label: 'Стрейч мікс', items: ['Змотка стрейч мікс', 'Змотка дрібнички'] },
-    { label: 'Ліки / косметика', items: ['Змотка ліки', 'Змотка уколи', 'Змотка ботокс', 'Змотка косметика'] },
-    { label: 'Їжа', items: ['Змотка солодощі', 'Змотка паски'] },
-    { label: 'Книги', items: ['Змотка книги', 'Змотка зошити'] },
-    { label: 'Пупирка / рідини', items: ['Змотка пупирка банки', 'Змотка пляшки', 'Змотка пупирка'] },
-    { label: 'Техніка / іграшки', items: ['Змотка техніка', 'Змотка іграшки'] }
+  { emoji: '🌀', label: 'Змотка', subs: [
+    'стрейч мікс', 'ліки', 'уколи', 'ботокс', 'косметика',
+    'солодощі', 'паски', 'книги', 'зошити', 'пупирка банки',
+    'пляшки', 'пупирка', 'техніка', 'іграшки', 'дрібнички'
   ]},
   { emoji: '💰', label: 'Цінне', subs: [
-    { label: 'Гроші', items: ['Гроші в зіп-пакеті — у водія'] },
-    { label: 'Техніка', items: ['Ноутбук у сумці — у водія', 'Ноутбук у коробці', 'Макбук', 'Телефон — у водія', 'Айфон', 'Навушники', 'Dyson', 'PlayStation'] }
+    'гроші в зіп-пакеті — у водія',
+    'ноутбук у сумці — у водія', 'ноутбук у коробці',
+    'макбук', 'телефон — у водія', 'айфон', 'навушники',
+    'Dyson', 'PlayStation'
   ]},
   { emoji: '📄', label: 'Документи', subs: [
-    { label: 'Файли', items: ['Файлик з документами — у водія', 'Документи у файлі'] },
-    { label: 'Папки', items: ['Папка з документами', 'Посвідчення водія'] }
+    'файлик — у водія', 'у файлі', 'у папці', 'посвідчення водія'
   ]},
   { emoji: '🧰', label: 'Нестандарт', subs: [
-    { label: 'Меблі / декор', items: ['Табуретка в стрейчі', 'Органайзер дерев\'яний', 'Картина в пупирці', 'Поличка'] },
-    { label: 'Спорт / авто', items: ['Ракетка в чохлі', 'Каністра в пупирці', 'Вихлопна труба', 'Велосипед розібраний', 'Велосипедні колеса'] },
-    { label: 'Довгі', items: ['Труби в стрейчі', 'Палки в стрейчі', 'Дерев\'яна деталь'] }
+    'табуретка в стрейчі', 'картина в пупирці', 'ракетка в чохлі',
+    'каністра в пупирці', 'органайзер', 'поличка', 'вихлопна труба',
+    'велосипед розібраний', 'велосипедні колеса',
+    'труби в стрейчі', 'палки в стрейчі', 'дерев\'яна деталь'
   ]},
   { emoji: '📚', label: 'Мікс', subs: [
-    { label: 'Кількість', items: ['2-3 предмети', '5+ предметів', '10+ предметів', 'Мішок', 'Багато кульків'] },
-    { label: 'Змішане', items: ['Сумки + коробки', 'Кульки + змотки', 'Все разом — великий мікс', 'Змішаний вантаж'] }
+    '2-3 предмети', '5+ предметів', '10+ предметів',
+    'мішок', 'багато кульків', 'сумки + коробки',
+    'кульки + змотки', 'все разом — великий мікс', 'змішаний вантаж'
   ]}
 ];
 
-// Обчислюємо плоский items з subs для зворотної сумісності (getAllDescriptions, saveCustomDescription тощо)
+// Сумісність: items = ["<label> <sub>", ...] (для getAllDescriptions / datalist)
 (function flattenCategoryItems(){
   DESC_CATEGORIES.forEach(function(cat){
-    if (cat.subs && !cat.items) {
-      var seen = {};
-      cat.items = [];
-      cat.subs.forEach(function(s){
-        (s.items || []).forEach(function(it){
-          var k = String(it).toLowerCase();
-          if (!seen[k]) { seen[k] = true; cat.items.push(it); }
-        });
+    if (!cat.items) {
+      cat.items = (cat.subs || []).map(function(s){
+        return cat.label + ' ' + s;
       });
     }
   });
@@ -7619,147 +7650,162 @@ function fillDescDatalist(datalistId) {
   }).join('');
 }
 
-// Рендерить chip picker: категорії (expand) → підтипи + елементи
+// Прогресивний picker:
+//   крок 1: показуємо 6 категорій (+"ще..." якщо більше)
+//   крок 2: клік по категорії → input = "Коробка", показуємо 6 підтипів (+"ще...")
+//   крок 3: клік по підтипу → input = "Коробка біла"
+//   "✕ скинути" → повертає до кроку 1
+var DESC_VISIBLE_LIMIT = 6;
+
 function renderDescCategoryPicker(containerEl, inputEl) {
   if (!containerEl || !inputEl) return;
-  containerEl.innerHTML = '';
 
-  var catsRow = document.createElement('div');
-  catsRow.className = 'desc-cats-row';
+  // Локальний стан для цього інстансу picker
+  var state = { catIdx: null, expandedCats: false, expandedSubs: false };
 
-  var itemsRow = document.createElement('div');
-  itemsRow.className = 'desc-items-row';
-  itemsRow.style.display = 'none';
-
-  var expanded = -1;
-
-  function pickItem(item) {
-    inputEl.value = item;
-    inputEl.focus();
+  function setInput(val) {
+    inputEl.value = val;
     inputEl.dispatchEvent(new Event('input', { bubbles: true }));
     inputEl.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function renderItems(cat) {
-    itemsRow.innerHTML = '';
-    // Якщо є subs — рендеримо групами з заголовками підтипів
-    if (cat.subs && cat.subs.length) {
-      cat.subs.forEach(function(sub){
-        var group = document.createElement('div');
-        group.className = 'desc-sub-group';
-        var head = document.createElement('div');
-        head.className = 'desc-sub-label';
-        head.textContent = sub.label;
-        group.appendChild(head);
-        var chips = document.createElement('div');
-        chips.className = 'desc-sub-chips';
-        (sub.items || []).forEach(function(item){
-          var chip = document.createElement('button');
-          chip.type = 'button';
-          chip.className = 'desc-item-chip';
-          chip.textContent = item;
-          chip.onclick = function(ev){
-            ev.preventDefault(); ev.stopPropagation();
-            pickItem(item);
-          };
-          chips.appendChild(chip);
-        });
-        group.appendChild(chips);
-        itemsRow.appendChild(group);
-      });
-    } else {
-      // Fallback — плоский список (для кастомної категорії)
-      (cat.items || []).forEach(function(item){
-        var chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'desc-item-chip';
-        chip.textContent = item;
-        chip.onclick = function(ev){
-          ev.preventDefault(); ev.stopPropagation();
-          pickItem(item);
-        };
-        itemsRow.appendChild(chip);
-      });
-    }
-    itemsRow.style.display = 'flex';
+  function makeChip(text, opts) {
+    opts = opts || {};
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'desc-cat-chip' + (opts.extra ? ' ' + opts.extra : '');
+    b.innerHTML = text;
+    b.onclick = function(ev){
+      ev.preventDefault(); ev.stopPropagation();
+      opts.onClick && opts.onClick();
+    };
+    return b;
   }
 
-  DESC_CATEGORIES.forEach(function(cat, idx){
-    var chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'desc-cat-chip';
-    chip.innerHTML = '<span class="desc-cat-emoji">' + cat.emoji + '</span> ' + cat.label;
-    chip.onclick = function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      catsRow.querySelectorAll('.desc-cat-chip').forEach(function(c){ c.classList.remove('active'); });
-      if (expanded === idx) {
-        itemsRow.style.display = 'none';
-        expanded = -1;
-      } else {
-        expanded = idx;
-        chip.classList.add('active');
-        renderItems(cat);
-      }
-    };
-    catsRow.appendChild(chip);
-  });
+  function render() {
+    containerEl.innerHTML = '';
 
-  // Кастомні описи (з localStorage + allData) — окрема категорія наприкінці
-  var custom = [];
-  var seen = {};
-  DESC_CATEGORIES.forEach(function(c){ c.items.forEach(function(i){ seen[i.toLowerCase()] = true; }); });
-  getCustomDescriptions().forEach(function(d){
-    var k = d.toLowerCase();
-    if (!seen[k]) { seen[k] = true; custom.push(d); }
-  });
-  if (typeof allData !== 'undefined' && Array.isArray(allData)) {
-    allData.forEach(function(p){
-      var d = (p['Опис'] || '').toString().trim();
-      if (!d) return;
+    // Рядок 1: шлях + reset, якщо обрано категорію
+    if (state.catIdx !== null) {
+      var pathRow = document.createElement('div');
+      pathRow.className = 'desc-path-row';
+      var cat = DESC_CATEGORIES[state.catIdx];
+      var crumb = document.createElement('span');
+      crumb.className = 'desc-path-crumb';
+      crumb.innerHTML = cat.emoji + ' <b>' + cat.label + '</b>';
+      pathRow.appendChild(crumb);
+      pathRow.appendChild(makeChip('✕ скинути', {
+        extra: 'desc-cat-chip-reset',
+        onClick: function(){
+          setInput('');
+          state.catIdx = null;
+          state.expandedSubs = false;
+          render();
+        }
+      }));
+      containerEl.appendChild(pathRow);
+    }
+
+    // Рядок 2: або категорії (крок 1), або підтипи (крок 2)
+    var row = document.createElement('div');
+    row.className = 'desc-cats-row';
+
+    if (state.catIdx === null) {
+      // КАТЕГОРІЇ
+      var limit = state.expandedCats ? DESC_CATEGORIES.length : DESC_VISIBLE_LIMIT;
+      DESC_CATEGORIES.slice(0, limit).forEach(function(cat, idx){
+        row.appendChild(makeChip(
+          '<span class="desc-cat-emoji">' + cat.emoji + '</span> ' + cat.label,
+          { onClick: function(){
+              state.catIdx = idx;
+              state.expandedSubs = false;
+              setInput(cat.label);
+              render();
+            }
+          }
+        ));
+      });
+      if (!state.expandedCats && DESC_CATEGORIES.length > DESC_VISIBLE_LIMIT) {
+        row.appendChild(makeChip('ще ' + (DESC_CATEGORIES.length - DESC_VISIBLE_LIMIT) + '…', {
+          extra: 'desc-cat-chip-more',
+          onClick: function(){ state.expandedCats = true; render(); }
+        }));
+      }
+      // ⭐ Мої — в кінці
+      appendCustomChip(row);
+    } else {
+      // ПІДТИПИ
+      var cat2 = DESC_CATEGORIES[state.catIdx];
+      var subs = cat2.subs || [];
+      var limit2 = state.expandedSubs ? subs.length : DESC_VISIBLE_LIMIT;
+      subs.slice(0, limit2).forEach(function(sub){
+        var full = cat2.label + ' ' + sub;
+        row.appendChild(makeChip(sub, {
+          extra: 'desc-sub-chip',
+          onClick: function(){
+            setInput(full);
+            try { saveCustomDescription(full); } catch (e) {}
+          }
+        }));
+      });
+      if (!state.expandedSubs && subs.length > DESC_VISIBLE_LIMIT) {
+        row.appendChild(makeChip('ще ' + (subs.length - DESC_VISIBLE_LIMIT) + '…', {
+          extra: 'desc-cat-chip-more',
+          onClick: function(){ state.expandedSubs = true; render(); }
+        }));
+      }
+    }
+    containerEl.appendChild(row);
+  }
+
+  function appendCustomChip(row) {
+    // Кастомні описи (з localStorage + allData)
+    var custom = [];
+    var seen = {};
+    DESC_CATEGORIES.forEach(function(c){
+      c.items.forEach(function(i){ seen[String(i).toLowerCase()] = true; });
+    });
+    getCustomDescriptions().forEach(function(d){
       var k = d.toLowerCase();
       if (!seen[k]) { seen[k] = true; custom.push(d); }
     });
-  }
-  if (custom.length > 0) {
-    var chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'desc-cat-chip desc-cat-chip-custom';
-    chip.innerHTML = '<span class="desc-cat-emoji">⭐</span> Мої (' + custom.length + ')';
-    chip.onclick = function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      catsRow.querySelectorAll('.desc-cat-chip').forEach(function(c){ c.classList.remove('active'); });
-      if (expanded === 'custom') {
-        itemsRow.style.display = 'none';
-        expanded = -1;
-      } else {
-        expanded = 'custom';
-        chip.classList.add('active');
-        itemsRow.innerHTML = '';
-        custom.forEach(function(item){
-          var ic = document.createElement('button');
-          ic.type = 'button';
-          ic.className = 'desc-item-chip';
-          ic.textContent = item;
-          ic.onclick = function(ev2){
-            ev2.preventDefault();
-            ev2.stopPropagation();
-            inputEl.value = item;
-            inputEl.focus();
-            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-            inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-          };
-          itemsRow.appendChild(ic);
-        });
-        itemsRow.style.display = 'flex';
+    if (typeof allData !== 'undefined' && Array.isArray(allData)) {
+      allData.forEach(function(p){
+        var d = (p['Опис'] || '').toString().trim();
+        if (!d) return;
+        var k = d.toLowerCase();
+        if (!seen[k]) { seen[k] = true; custom.push(d); }
+      });
+    }
+    if (!custom.length) return;
+    row.appendChild(makeChip(
+      '<span class="desc-cat-emoji">⭐</span> Мої (' + custom.length + ')',
+      { extra: 'desc-cat-chip-custom',
+        onClick: function(){
+          // Показати popup зі списком кастомних описів
+          var existing = containerEl.querySelector('.desc-custom-list');
+          if (existing) { existing.remove(); return; }
+          var box = document.createElement('div');
+          box.className = 'desc-items-row desc-custom-list';
+          custom.slice(0, 40).forEach(function(item){
+            var ic = document.createElement('button');
+            ic.type = 'button';
+            ic.className = 'desc-item-chip';
+            ic.textContent = item;
+            ic.onclick = function(ev2){
+              ev2.preventDefault(); ev2.stopPropagation();
+              setInput(item);
+              box.remove();
+            };
+            box.appendChild(ic);
+          });
+          containerEl.appendChild(box);
+        }
       }
-    };
-    catsRow.appendChild(chip);
+    ));
   }
 
-  containerEl.appendChild(catsRow);
-  containerEl.appendChild(itemsRow);
+  render();
 }
 
 // Застарілий API (для buildDescSuggestions у старому коді)
