@@ -703,6 +703,20 @@ body {
   background: #f0fdf4; border-top: 1px solid #d1fae5;
   font-size: 11px; color: #065f46; font-weight: 600;
 }
+.card-scan-strip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  font-size: 11px; font-weight: 600;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.card-scan-strip--scanned { background:#eff6ff; color:#1e40af; border-top-color:#bfdbfe; }
+.card-scan-strip--verify  { background:#fff7ed; color:#9a3412; border-top-color:#fed7aa; }
+.card-scan-thumb {
+  width: 32px; height: 32px; object-fit: cover;
+  border-radius: 4px; margin-left: auto;
+  cursor: pointer; border: 1px solid rgba(0,0,0,0.1);
+}
 
 /* Quick Actions Panel */
 .card-actions {
@@ -1972,6 +1986,13 @@ body {
 
   <!-- MAIN CONTENT -->
   <main class="main-content">
+    <!-- Package Status Filter Bar (main screen) -->
+    <div class="filter-bar" id="pkgStatusFilterBar" style="padding:8px 4px 4px;">
+      <button class="filter-chip active" data-pkgstatus="all" onclick="setPkgStatusFilter('all')">Всі <span class="chip-count" id="pkgcntAll">0</span></button>
+      <button class="filter-chip" data-pkgstatus="scanned" onclick="setPkgStatusFilter('scanned')">📷 Скановані <span class="chip-count" id="pkgcntScanned">0</span></button>
+      <button class="filter-chip" data-pkgstatus="verify" onclick="setPkgStatusFilter('verify')">🔍 Провірка <span class="chip-count" id="pkgcntVerify">0</span></button>
+      <button class="filter-chip" data-pkgstatus="ready" onclick="setPkgStatusFilter('ready')">✅ Готово <span class="chip-count" id="pkgcntReady">0</span></button>
+    </div>
     <!-- Cards List (parcels view) -->
     <div class="cards-list" id="cardsList">
       <!-- Filled by JS -->
@@ -2430,6 +2451,7 @@ let currentDirection = 'ue';
 let currentFilter = 'all';
 let currentVerifyFilter = 'all';
 let currentPayFilter = 'all';
+let currentPkgStatusFilter = 'all'; // main-screen chip bar: all|scanned|verify|ready
 let searchQuery = '';
 let openCardId = null;
 let stats = {};
@@ -2844,6 +2866,15 @@ function filterData() {
     data = data.filter(p => p['Статус оплати'] === currentPayFilter);
   }
 
+  // Package-status filter (main-screen chip bar: Скановані / Провірка / Готово)
+  if (currentPkgStatusFilter === 'scanned') {
+    data = data.filter(p => p['Статус посилки'] === 'Оформлення');
+  } else if (currentPkgStatusFilter === 'verify') {
+    data = data.filter(p => p['Статус посилки'] === 'Провірка');
+  } else if (currentPkgStatusFilter === 'ready') {
+    data = data.filter(p => p['Статус посилки'] === 'Готово');
+  }
+
   // Search
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -2978,6 +3009,36 @@ function renderCard(p) {
     ? `<div class="card-route-strip">✅ В маршруті: ${rteId}${auto ? ' · 🚐 ' + auto : ''}</div>`
     : '';
 
+  // Scan/Verify info strip (appears for packages in simple-scan or verification)
+  const scanAuthor = p['Скан автор'] || '';
+  const scanDate   = p['Дата реєстрації скану'] || '';
+  const npPayer    = p['НП платник'] || '';
+  const npSum      = p['НП сума грн'] || '';
+  const npDebt     = p['НП борг грн'] || '';
+  const placesTotal = p['Кількість місць'] || '';
+  const placeCur    = p['Поточне місце'] || '';
+  const innerNum    = p['Внутрішній №'] || '';
+  const descText    = p['Опис'] || '';
+  const photoUrl    = p['Фото посилки'] || '';
+  let scanInfoStrip = '';
+  if (statusPkg === 'Оформлення' && (scanAuthor || scanDate || npPayer || placesTotal)) {
+    // 📷 Скановано — легка реєстрація
+    const npBit = npPayer === 'ми'
+      ? (npSum ? ` · 💳 НП: ми ${npSum} грн (борг)` : ' · 💳 НП: ми')
+      : (npPayer === 'відправник' ? ' · 💳 НП: відправник' : '');
+    scanInfoStrip = `<div class="card-scan-strip card-scan-strip--scanned">📷 Скановано${scanAuthor ? ' · ' + scanAuthor : ''}${scanDate ? ' · ' + scanDate : ''}${placesTotal ? ' · 📦 ' + placesTotal + ' місць' : ''}${npBit}</div>`;
+  } else if (statusPkg === 'Провірка') {
+    const thumb = photoUrl ? `<img src="${photoUrl}" class="card-scan-thumb" onclick="event.stopPropagation(); window.open('${photoUrl}','_blank')" alt="">` : '';
+    const parts = [];
+    if (scanAuthor) parts.push('👤 ' + scanAuthor);
+    if (scanDate)   parts.push('🕒 ' + scanDate);
+    if (descText)   parts.push('📄 ' + descText.substring(0, 30) + (descText.length > 30 ? '…' : ''));
+    if (placesTotal) parts.push('📦 ' + (placeCur ? placeCur + '/' : '') + placesTotal);
+    if (weight)     parts.push('⚖️ ' + weight + ' кг');
+    if (innerNum)   parts.push('🔢 ' + innerNum);
+    scanInfoStrip = `<div class="card-scan-strip card-scan-strip--verify">🔍 В провірці${parts.length ? ' · ' + parts.join(' · ') : ''}${thumb}</div>`;
+  }
+
   // Meta tags (configurable via column configurator)
   const visCols = getVisibleCardColumns();
   let metaHtml = '';
@@ -3103,6 +3164,7 @@ function renderCard(p) {
           ${metaHtml ? `<div class="card-meta-tags">${metaHtml}</div>` : ''}
         </div>
       </div>
+      ${scanInfoStrip}
       ${visCols.includes('route') ? routeStrip : ''}
       <div class="card-actions" id="actions-${pkgId}">
         <button onclick="event.stopPropagation(); window.open('tel:${phone}')">📞 Дзвінок</button>
@@ -3836,6 +3898,30 @@ function setPayFilter(pay) {
     el.classList.toggle('active', el.dataset.pay === pay);
   });
   renderCards();
+}
+
+function setPkgStatusFilter(s) {
+  currentPkgStatusFilter = s;
+  document.querySelectorAll('#pkgStatusFilterBar .filter-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.pkgstatus === s);
+  });
+  renderCards();
+}
+
+function updatePkgStatusCounters() {
+  try {
+    var dirKey = (currentDirection === 'ue') ? 'УК→ЄВ' : 'ЄВ→УК';
+    var base = allData.filter(function(p) { return p['Статус CRM'] !== 'Архів' && p['Напрям'] === dirKey; });
+    var cAll      = base.length;
+    var cScanned  = base.filter(function(p) { return p['Статус посилки'] === 'Оформлення'; }).length;
+    var cVerify   = base.filter(function(p) { return p['Статус посилки'] === 'Провірка';  }).length;
+    var cReady    = base.filter(function(p) { return p['Статус посилки'] === 'Готово';    }).length;
+    var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    set('pkgcntAll', cAll);
+    set('pkgcntScanned', cScanned);
+    set('pkgcntVerify', cVerify);
+    set('pkgcntReady', cReady);
+  } catch(e) { console.error('updatePkgStatusCounters error:', e); }
 }
 
 function onSearch(value) {
@@ -5528,6 +5614,8 @@ function updateCounters() {
     setCount('mobCountChecking', cChecking);
     setCount('mobCountReady', cReady);
     setCount('mobCountUnknown', cUnknown);
+    // Package-status chip-bar counters (main screen)
+    updatePkgStatusCounters();
   } catch(e) { console.error('updateCounters error:', e); }
 }
 
@@ -7084,6 +7172,24 @@ async function applyTag() {
   border-bottom: 1px solid #e5e7eb;
   word-break: break-word;
 }
+.verif-sessions {
+  display: flex; gap: 6px; padding: 8px 12px;
+  background: #fff7ed; border-bottom: 1px solid #fed7aa;
+  flex-wrap: wrap; align-items: center;
+}
+.verif-sessions-label { font-size: 11px; color: #9a3412; font-weight: 600; }
+.verif-session-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 12px;
+  background: #fff; border: 1px solid #fed7aa;
+  font-size: 11px; font-weight: 600; color: #9a3412;
+  cursor: pointer;
+}
+.verif-session-chip.active { background: #9a3412; color: #fff; border-color: #9a3412; }
+.verif-session-chip .close {
+  font-size: 10px; opacity: 0.7; margin-left: 2px;
+}
+.verif-session-chip .close:hover { opacity: 1; }
 .verif-body {
   flex: 1;
   overflow-y: auto;
@@ -7317,27 +7423,10 @@ async function applyTag() {
       <button class="verif-header-close" onclick="closeVerificationForm()">✕</button>
     </div>
     <div class="verif-pkg-title" id="verifPkgTitle">—</div>
+    <!-- Active concurrent sessions (max 3) -->
+    <div class="verif-sessions" id="verifSessionsBar" style="display:none;"></div>
 
     <div class="verif-body">
-      <!-- Photo -->
-      <div>
-        <label class="verif-field-label">📷 Фото посилки <span style="color:var(--danger)">*</span></label>
-        <div class="verif-photo-area" onclick="verifPickPhoto()">
-          <div class="verif-photo-placeholder" id="verifPhotoPlaceholder">
-            <div class="verif-photo-placeholder-icon">📷</div>
-            <div class="verif-photo-placeholder-text">Додати фото</div>
-            <div class="verif-photo-placeholder-sub">Камера або галерея</div>
-          </div>
-          <img class="verif-photo-preview" id="verifPhotoPreview" alt="preview">
-        </div>
-        <input type="file" id="verifFileInput" accept="image/*" capture="environment" onchange="verifOnFileChosen(event)" style="display:none;">
-        <div class="verif-photo-buttons" style="margin-top:8px;">
-          <button class="verif-photo-btn" onclick="verifPickPhoto()">📷 Зняти/Обрати</button>
-          <button class="verif-photo-btn" onclick="verifRetakePhoto()">🔄 Перезняти</button>
-        </div>
-        <div class="verif-photo-status" id="verifPhotoUploadStatus"></div>
-      </div>
-
       <!-- Опис -->
       <div>
         <label class="verif-field-label">📝 Опис посилки <span style="color:var(--danger)">*</span></label>
@@ -7353,12 +7442,38 @@ async function applyTag() {
       <!-- Вага -->
       <div>
         <label class="verif-field-label">⚖️ Вага, кг <span style="color:var(--danger)">*</span></label>
-        <input type="number" step="0.1" min="0" inputmode="decimal" class="verif-input" id="verifWeight" placeholder="напр. 2.3">
+        <input type="number" step="0.1" min="0" inputmode="decimal" class="verif-input" id="verifWeight" placeholder="напр. 2.3" onblur="verifOnWeightEntered()" onchange="verifOnWeightEntered()">
+      </div>
+
+      <!-- Внутрішній номер -->
+      <div>
+        <label class="verif-field-label">🔢 Внутрішній номер</label>
+        <input type="text" class="verif-input" id="verifInnerNum" placeholder="напр. 0423 або E-12">
       </div>
 
       <!-- Приховані поля кількості місць (значення виставляється з квадратика на сканері) -->
       <input type="hidden" id="verifQtyTotal" value="1">
       <input type="hidden" id="verifQty" value="1">
+
+      <!-- Photo (з'являється після ваги; фото робиться на кінці) -->
+      <div id="verifPhotoSection">
+        <label class="verif-field-label">📷 Фото посилки <span style="color:var(--danger)">*</span></label>
+        <div class="verif-photo-hint" id="verifPhotoHint" style="font-size:11px;color:#6b7280;margin-bottom:6px;">Спочатку вкажи вагу — тоді з'явиться кнопка камери.</div>
+        <div class="verif-photo-area" onclick="verifPickPhoto()">
+          <div class="verif-photo-placeholder" id="verifPhotoPlaceholder">
+            <div class="verif-photo-placeholder-icon">📷</div>
+            <div class="verif-photo-placeholder-text">Додати фото</div>
+            <div class="verif-photo-placeholder-sub">Камера або галерея</div>
+          </div>
+          <img class="verif-photo-preview" id="verifPhotoPreview" alt="preview">
+        </div>
+        <input type="file" id="verifFileInput" accept="image/*" capture="environment" onchange="verifOnFileChosen(event)" style="display:none;">
+        <div class="verif-photo-buttons" style="margin-top:8px;">
+          <button class="verif-photo-btn" onclick="verifPickPhoto()">📷 Зняти/Обрати</button>
+          <button class="verif-photo-btn" onclick="verifRetakePhoto()">🔄 Перезняти</button>
+        </div>
+        <div class="verif-photo-status" id="verifPhotoUploadStatus"></div>
+      </div>
 
       <!-- Нова Пошта (вхідна) — інформація зі скану -->
       <div id="verifNpBlock" style="display:none;">
@@ -7464,6 +7579,31 @@ function ttnQtyPulse() {
 
 // ===== Режим сканера: 'scan' (проста реєстрація) або 'verify' (повна перевірка) =====
 var TTN_MODE_KEY = 'esco_ttn_mode_v1';
+var OPERATOR_KEY = 'esco_operator_v1';
+function getCurrentOperator() {
+  try { return localStorage.getItem(OPERATOR_KEY) || 'ОМ'; }
+  catch(e) { return 'ОМ'; }
+}
+function setCurrentOperator(name) {
+  try { localStorage.setItem(OPERATOR_KEY, String(name || '').trim() || 'ОМ'); } catch(e) {}
+  var av = document.querySelector('.avatar');
+  if (av) av.textContent = getCurrentOperator();
+}
+function promptOperator() {
+  var name = prompt('Хто оператор? (ініціали/ім\'я)', getCurrentOperator());
+  if (name === null) return;
+  setCurrentOperator(name);
+}
+// Init avatar display from localStorage
+document.addEventListener('DOMContentLoaded', function(){
+  var av = document.querySelector('.avatar');
+  if (av) {
+    av.textContent = getCurrentOperator();
+    av.style.cursor = 'pointer';
+    av.title = 'Змінити оператора';
+    av.addEventListener('click', promptOperator);
+  }
+});
 var ttnMode = 'scan';
 try {
   var savedMode = localStorage.getItem(TTN_MODE_KEY);
@@ -7592,7 +7732,8 @@ function ttnSimpleSave() {
     місць_всього: qty,
     нп_платник: payer,
     нп_сума: npSum,
-    нп_борг: (payer === 'Ми') ? npSum : 0
+    нп_борг: (payer === 'Ми') ? npSum : 0,
+    скан_автор: getCurrentOperator()
   };
 
   fetch(GAS_URL, {
@@ -8399,17 +8540,95 @@ function wireDescSuggest(inputEl, listEl) {
   });
 }
 
-function openVerificationForm(pkgObj) {
+// Concurrent verification sessions (up to 3 drafts)
+var VERIF_MAX_SESSIONS = 3;
+var verifSessions = []; // [{ pkgObj, photoUrl, snapshot:{опис,вага,коментар,innerNum,qtyTotal,qty} }]
+
+function verifSnapshotCurrent() {
+  if (!verifCurrentPkg) return null;
+  return {
+    pkgObj: verifCurrentPkg,
+    photoUrl: verifCurrentPhotoUrl,
+    snapshot: {
+      desc:     (document.getElementById('verifDesc')||{}).value || '',
+      weight:   (document.getElementById('verifWeight')||{}).value || '',
+      comment:  (document.getElementById('verifComment')||{}).value || '',
+      innerNum: (document.getElementById('verifInnerNum')||{}).value || '',
+      qtyTot:   (document.getElementById('verifQtyTotal')||{}).value || '1',
+      qty:      (document.getElementById('verifQty')||{}).value || '1'
+    }
+  };
+}
+function verifStashCurrent() {
+  var snap = verifSnapshotCurrent();
+  if (!snap) return;
+  var id = snap.pkgObj['PKG_ID'];
+  var idx = verifSessions.findIndex(function(s){ return s.pkgObj['PKG_ID'] === id; });
+  if (idx === -1) verifSessions.push(snap);
+  else verifSessions[idx] = snap;
+}
+function verifRemoveSession(pkgId) {
+  verifSessions = verifSessions.filter(function(s){ return s.pkgObj['PKG_ID'] !== pkgId; });
+  verifRenderSessionsBar();
+}
+function verifSwitchToSession(pkgId) {
+  verifStashCurrent();
+  var s = verifSessions.find(function(x){ return x.pkgObj['PKG_ID'] === pkgId; });
+  if (!s) return;
+  openVerificationForm(s.pkgObj, { restore: s });
+}
+function verifRenderSessionsBar() {
+  var bar = document.getElementById('verifSessionsBar');
+  if (!bar) return;
+  var curId = verifCurrentPkg ? verifCurrentPkg['PKG_ID'] : null;
+  // Ensure current is represented if not already stashed
+  var allIds = verifSessions.map(function(s){ return s.pkgObj['PKG_ID']; });
+  if (curId && allIds.indexOf(curId) === -1) {
+    allIds = [curId].concat(allIds);
+  }
+  if (allIds.length <= 1) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'flex';
+  var html = '<span class="verif-sessions-label">🔁 Активні ' + allIds.length + '/' + VERIF_MAX_SESSIONS + ':</span>';
+  allIds.forEach(function(id){
+    var s = verifSessions.find(function(x){ return x.pkgObj['PKG_ID'] === id; });
+    var label = s ? (s.pkgObj['Номер ТТН'] || id).toString().slice(-6) : (verifCurrentPkg['Номер ТТН'] || id).toString().slice(-6);
+    var isActive = (id === curId);
+    html += '<span class="verif-session-chip' + (isActive ? ' active' : '') + '" onclick="verifSwitchToSession(\'' + id + '\')">'
+         +  '📦 ' + label
+         +  '<span class="close" onclick="event.stopPropagation(); verifRemoveSession(\'' + id + '\')" title="Закрити">✕</span>'
+         +  '</span>';
+  });
+  bar.innerHTML = html;
+}
+
+function openVerificationForm(pkgObj, opts) {
+  opts = opts || {};
+  // If switching (different pkg), stash current first
+  if (verifCurrentPkg && verifCurrentPkg['PKG_ID'] !== pkgObj['PKG_ID']) {
+    verifStashCurrent();
+  }
+  // Enforce max concurrent sessions
+  var existingIdx = verifSessions.findIndex(function(s){ return s.pkgObj['PKG_ID'] === pkgObj['PKG_ID']; });
+  if (existingIdx === -1 && verifSessions.length >= VERIF_MAX_SESSIONS && (!verifCurrentPkg || verifCurrentPkg['PKG_ID'] !== pkgObj['PKG_ID'])) {
+    showToast('⚠️ Максимум ' + VERIF_MAX_SESSIONS + ' одночасних провірок. Закрий одну.', 'warning');
+    return;
+  }
+
   verifCurrentPkg = pkgObj;
-  verifCurrentPhotoUrl = pkgObj['Фото посилки'] || '';
+  verifCurrentPhotoUrl = (opts.restore && opts.restore.photoUrl) || pkgObj['Фото посилки'] || '';
 
   buildDescSuggestions();
 
   document.getElementById('verifPkgTitle').textContent =
     (pkgObj['Номер ТТН'] || '—') + ' • ' + (pkgObj['Піб відправника'] || '—');
-  document.getElementById('verifDesc').value = pkgObj['Опис'] || '';
-  document.getElementById('verifWeight').value = pkgObj['Кг'] || '';
-  document.getElementById('verifComment').value = pkgObj['Примітка'] || '';
+  var snap = opts.restore && opts.restore.snapshot;
+  document.getElementById('verifDesc').value = snap ? snap.desc : (pkgObj['Опис'] || '');
+  document.getElementById('verifWeight').value = snap ? snap.weight : (pkgObj['Кг'] || '');
+  document.getElementById('verifComment').value = snap ? snap.comment : (pkgObj['Примітка'] || '');
+  var innerEl = document.getElementById('verifInnerNum');
+  if (innerEl) innerEl.value = snap ? snap.innerNum : (pkgObj['Внутрішній №'] || '');
+  // Photo gate: scroll / enable only after weight is filled
+  verifUpdatePhotoGate();
 
   // Кількість місць: пріоритет — значення з квадратика сканера, далі БД, далі 1
   var qCur = 1, qTot = 1;
@@ -8419,6 +8638,8 @@ function openVerificationForm(pkgObj) {
     var storedTot = parseInt(pkgObj['Кількість місць'] || pkgObj['Місць'] || '', 10);
     if (storedTot > 0) { qTot = storedTot; qCur = parseInt(pkgObj['Поточне місце'] || '1', 10) || 1; }
   }
+  if (snap && snap.qtyTot) qTot = parseInt(snap.qtyTot, 10) || qTot;
+  if (snap && snap.qty)    qCur = parseInt(snap.qty, 10) || qCur;
   document.getElementById('verifQtyTotal').value = qTot;
   document.getElementById('verifQty').value = qCur;
 
@@ -8464,14 +8685,29 @@ function openVerificationForm(pkgObj) {
   document.getElementById('verifSaveBtn').textContent = '✅ Готово';
 
   document.getElementById('verifOverlay').classList.add('open');
+  verifRenderSessionsBar();
 }
 
 function closeVerificationForm() {
+  // Remove current from session list (was completed or cancelled)
+  if (verifCurrentPkg) {
+    var curId = verifCurrentPkg['PKG_ID'];
+    verifSessions = verifSessions.filter(function(s){ return s.pkgObj['PKG_ID'] !== curId; });
+  }
+  // If there are remaining stashed sessions, open the next one instead of closing
+  if (verifSessions.length > 0) {
+    var next = verifSessions[0];
+    verifCurrentPkg = null;
+    openVerificationForm(next.pkgObj, { restore: next });
+    return;
+  }
   document.getElementById('verifOverlay').classList.remove('open');
   verifCurrentPkg = null;
   verifCurrentPhotoUrl = '';
   var input = document.getElementById('verifFileInput');
   if (input) input.value = '';
+  var bar = document.getElementById('verifSessionsBar');
+  if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
 }
 
 function verifPickPhoto() {
@@ -8534,6 +8770,28 @@ function verifRetakePhoto() {
   verifPickPhoto();
 }
 
+function verifUpdatePhotoGate() {
+  var section = document.getElementById('verifPhotoSection');
+  var hint = document.getElementById('verifPhotoHint');
+  if (!section) return;
+  var w = (document.getElementById('verifWeight') || {}).value || '';
+  var hasWeight = !!parseFloat((w + '').replace(',', '.'));
+  section.style.opacity = hasWeight ? '1' : '0.45';
+  section.style.pointerEvents = hasWeight ? 'auto' : 'none';
+  if (hint) hint.style.display = hasWeight ? 'none' : 'block';
+}
+function verifOnWeightEntered() {
+  verifUpdatePhotoGate();
+  var w = parseFloat((document.getElementById('verifWeight').value || '').replace(',', '.'));
+  if (w > 0 && !verifCurrentPhotoUrl) {
+    // Auto-open camera once weight is entered (per user request)
+    setTimeout(function(){
+      var input = document.getElementById('verifFileInput');
+      if (input) input.click();
+    }, 150);
+  }
+}
+
 function verifSave() {
   if (!verifCurrentPkg) return;
   var err = document.getElementById('verifError');
@@ -8576,6 +8834,7 @@ function verifSave() {
   var npSum   = parseFloat(document.getElementById('verifNpSum').value) || 0;
   var npDebt  = parseFloat(document.getElementById('verifNpDebt').value) || 0;
 
+  var innerNum = (document.getElementById('verifInnerNum') || {}).value || '';
   apiPost('completeVerification', {
     pkg_id: verifCurrentPkg['PKG_ID'],
     'опис': опис,
@@ -8586,7 +8845,9 @@ function verifSave() {
     'місце_поточне': qtyCur,
     'нп_платник': npPayer,
     'нп_сума': npSum,
-    'нп_борг': npDebt
+    'нп_борг': npDebt,
+    'скан_автор': getCurrentOperator(),
+    'внутрішній_номер': innerNum
   }).then(function(res){
     if (res && res.ok) {
       showToast('✅ Перевірка завершена' + (qtyTot > 1 ? ' (' + qtyCur + '/' + qtyTot + ')' : ''), 'success');

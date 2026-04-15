@@ -1152,6 +1152,8 @@ function apiCompleteVerification(params) {
   if (params['нп_платник'] !== undefined) updates['НП платник'] = String(params['нп_платник']);
   if (params['нп_сума']    !== undefined) updates['НП сума грн'] = String(params['нп_сума']);
   if (params['нп_борг']    !== undefined) updates['НП борг грн'] = String(params['нп_борг']);
+  if (params['скан_автор'] !== undefined) updates['Скан автор'] = String(params['скан_автор']);
+  if (params['внутрішній_номер'] !== undefined) updates['Внутрішній №'] = String(params['внутрішній_номер']);
 
   updates['Статус посилки'] = 'Готово';
   updates['Контроль перевірки'] = 'Готова до маршруту';
@@ -1190,6 +1192,7 @@ function apiSaveSimpleScan(params) {
   if (params['нп_платник']   !== undefined) updates['НП платник']     = String(params['нп_платник']);
   if (params['нп_сума']      !== undefined) updates['НП сума грн']    = String(params['нп_сума']);
   if (params['нп_борг']      !== undefined) updates['НП борг грн']    = String(params['нп_борг']);
+  if (params['скан_автор']   !== undefined) updates['Скан автор']     = String(params['скан_автор']);
   updates['Дата реєстрації скану'] = now();
 
   for (var col in updates) {
