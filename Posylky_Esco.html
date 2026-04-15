@@ -6928,11 +6928,19 @@ async function applyTag() {
 .desc-cat-chip-custom.active { background: #f59e0b; border-color: #f59e0b; }
 .desc-cat-emoji { font-size: 14px; }
 .desc-items-row {
-  display: flex; flex-wrap: wrap; gap: 5px;
-  padding: 8px; background: #f9fafb;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; background: #f9fafb;
   border: 1px solid #e5e7eb; border-radius: 8px;
-  max-height: 180px; overflow-y: auto;
+  max-height: 260px; overflow-y: auto;
 }
+.desc-sub-group { display: flex; flex-direction: column; gap: 4px; }
+.desc-sub-label {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.6px; color: #6b7280;
+  padding: 2px 4px;
+  border-left: 3px solid var(--primary, #3b82f6);
+}
+.desc-sub-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .desc-item-chip {
   padding: 5px 10px;
   background: #fff; color: #374151;
@@ -6945,6 +6953,40 @@ async function applyTag() {
   background: var(--primary, #3b82f6); color: #fff;
   border-color: var(--primary, #3b82f6);
 }
+
+/* Дропдаун автопідказок під verifDesc */
+.desc-suggest-wrap { position: relative; }
+.desc-suggest-list {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  max-height: 240px; overflow-y: auto;
+  margin-top: 2px;
+  display: none;
+}
+.desc-suggest-list.open { display: block; }
+.desc-suggest-item {
+  padding: 8px 12px;
+  font-size: 13px; color: #1f2937;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex; align-items: center; gap: 6px;
+}
+.desc-suggest-item:last-child { border-bottom: none; }
+.desc-suggest-item:hover, .desc-suggest-item.active { background: #eff6ff; }
+.desc-suggest-kw {
+  font-size: 10px; font-weight: 700;
+  background: #fef3c7; color: #92400e;
+  border-radius: 4px; padding: 2px 6px;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+.desc-suggest-text { flex: 1; }
+.desc-suggest-text b { color: var(--primary, #3b82f6); }
 </style>
 
 <div class="verif-overlay" id="verifOverlay">
@@ -6978,10 +7020,13 @@ async function applyTag() {
       <!-- Опис -->
       <div>
         <label class="verif-field-label">📝 Опис посилки <span style="color:var(--danger)">*</span></label>
-        <input type="text" class="verif-input" id="verifDesc" list="verifDescList" placeholder="Почніть вводити або оберіть категорію нижче..." autocomplete="off">
+        <div class="desc-suggest-wrap">
+          <input type="text" class="verif-input" id="verifDesc" list="verifDescList" placeholder="Почніть вводити (крафт, атб, леопард...) або оберіть категорію" autocomplete="off">
+          <div class="desc-suggest-list" id="verifDescSuggest"></div>
+        </div>
         <datalist id="verifDescList"></datalist>
         <div id="verifDescPicker" class="desc-picker"></div>
-        <div style="font-size:11px;color:#6b7280;margin-top:4px;">💡 Натисніть категорію → оберіть готовий опис, або введіть свій (запамʼятається)</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">💡 Натисніть категорію → підтип → готовий опис. Або вводьте ключове слово (напр. «крафт», «атб», «леопард») — система підкаже.</div>
       </div>
 
       <!-- Вага -->
@@ -7335,66 +7380,182 @@ var verifCurrentPkg = null;
 var verifCurrentPhotoUrl = '';
 
 // ===== DESCRIPTION CATEGORIES (shared across create/edit/verify) =====
+// Структура: кожна категорія має subs: [{ label, items: [...] }]
+// items розраховується автоматично з subs для зворотної сумісності
 var DESC_CATEGORIES = [
-  { emoji: '📦', label: 'Коробки', items: [
-    'Крафтова коробка', 'Біла коробка',
-    'Коробка НП мала', 'Коробка НП велика', 'Коробка НП довга',
-    'Коробка зі взуттям',
-    'Коробка з ноутбуком', 'Коробка з Dyson', 'Коробка з телефоном', 'Коробка з PlayStation',
-    'Коробка з косметикою', 'Коробка з ботоксом', 'Коробка з ліками',
-    'Коробка зі солодощами', 'Коробка з пасками', 'Коробка з печивом',
-    'Зелена коробка Tom Ford', 'Коробка Canon', 'Коробка з мультипічкою', 'Коробка з системним блоком'
+  { emoji: '📦', label: 'Коробки', subs: [
+    { label: 'Крафт', items: ['Коробка крафт', 'Коробка крафт плоска', 'Коробка крафт мікс', 'Коробка крафт взуття'] },
+    { label: 'Біла', items: ['Біла коробка', 'Біла коробка мікс', 'Біла коробка взуття'] },
+    { label: 'Чорна', items: ['Чорна коробка', 'Чорна коробка взуття'] },
+    { label: 'Нова Пошта', items: ['Коробка НП мала', 'Коробка НП велика', 'Коробка НП довга'] },
+    { label: 'Кольорова', items: ['Кольорова коробка косметика', 'Кольорова коробка лампи', 'Кольорова коробка техніка'] },
+    { label: 'Техніка', items: ['Коробка ноутбук', 'Коробка Dyson', 'Коробка PlayStation', 'Коробка телефон', 'Коробка Canon', 'Коробка мультипічка', 'Коробка системний блок'] },
+    { label: 'Вміст', items: ['Коробка косметика', 'Коробка ботокс', 'Коробка ліки', 'Коробка солодощі', 'Коробка паски', 'Коробка печиво', 'Зелена коробка Tom Ford'] }
   ]},
-  { emoji: '🧳', label: 'Валізи', items: [
-    'Валіза пластикова чорна', 'Валіза пластикова сіра', 'Валіза пластикова синя',
-    'Валіза пластикова бірюзова', 'Валіза пластикова вишнева',
-    'Валіза тканинна чорна', 'Валіза тканинна синя', 'Валіза тканинна коричнева',
-    '2 валізи', '3 валізи'
+  { emoji: '🧳', label: 'Валізи', subs: [
+    { label: 'Пластик', items: ['Валіза пластикова чорна', 'Валіза пластикова сіра', 'Валіза пластикова синя', 'Валіза пластикова бірюзова', 'Валіза пластикова вишнева', 'Велика пластикова валіза', 'Мала пластикова валіза'] },
+    { label: 'Тканина', items: ['Валіза тканинна чорна', 'Валіза тканинна синя', 'Валіза тканинна коричнева', 'Дорожня тканинна валіза'] },
+    { label: 'Кілька', items: ['2 валізи', '3 валізи'] }
   ]},
-  { emoji: '🎒', label: 'Рюкзаки', items: [
-    'Рюкзак чорний', 'Рюкзак синій', 'Рюкзак кольоровий',
-    'Рюкзак в стрейчі',
-    'Рюкзак з PlayStation', 'Рюкзак з ноутбуком'
+  { emoji: '🎒', label: 'Рюкзаки', subs: [
+    { label: 'Тряпчаний', items: ['Рюкзак чорний', 'Рюкзак синій', 'Рюкзак кольоровий', 'Рюкзак у стрейчі'] },
+    { label: 'Техніка', items: ['Рюкзак з ноутбуком', 'Рюкзак з PlayStation'] }
   ]},
-  { emoji: '🛍️', label: 'Сумки', items: [
-    'Сумка IKEA синя', 'Сумка MIGROS', 'Сумка ALDI', 'Сумка LIDL',
-    'Сумка BMW синя', 'Сумка BMW зелена',
-    'Сумка ATB', 'Сумка Сільпо', 'Сумка Метро', 'Сумка Ашан',
-    'Польська торба чорна', 'Польська торба синя', 'Польська торба червона клітка',
-    'Дорожня сумка', 'Тряпчана сумка',
-    'Сумка з візерунками', 'Сумка леопардова', 'Сумка зміїна'
+  { emoji: '🛍️', label: 'Сумки', subs: [
+    { label: 'Польська клітка', items: ['Польська торба чорна', 'Польська торба синя', 'Польська торба червона клітка'] },
+    { label: 'Тряпчана', items: ['Тряпчана сумка', 'Сумка з візерунками'] },
+    { label: 'Дорожня', items: ['Дорожня сумка', 'Велика дорожня сумка'] },
+    { label: 'Бренд', items: ['Сумка IKEA', 'Сумка IKEA синя', 'Сумка MIGROS', 'Сумка ALDI', 'Сумка LIDL', 'Сумка ATB', 'Сумка Сільпо', 'Сумка Метро', 'Сумка Ашан'] },
+    { label: 'Дизайнерська', items: ['Сумка леопардова', 'Сумка зміїна'] },
+    { label: 'Авто', items: ['Сумка BMW синя', 'Сумка BMW зелена'] }
   ]},
-  { emoji: '🛒', label: 'Пакети', items: [
-    'Кульок "Україна" білий', 'Газета',
-    'Пакет АТБ', 'Пакет Метро', 'Пакет Сільпо', 'Пакет Рошен',
-    'Прозорий кульок',
-    'Жовтий кульок', 'Зелений кульок', 'Синій кульок BMW'
+  { emoji: '🛒', label: 'Пакети', subs: [
+    { label: 'Білі', items: ['Кульок Україна', 'Білий кульок', 'Кульок газета'] },
+    { label: 'Магазин', items: ['Пакет АТБ', 'Пакет Сільпо', 'Пакет Метро', 'Пакет Рошен', 'Пакет Ашан'] },
+    { label: 'Кольоровий', items: ['Жовтий кульок', 'Зелений кульок', 'Синій кульок BMW', 'Фіолетовий кульок', 'Прозорий кульок'] }
   ]},
-  { emoji: '🌀', label: 'Змотки', items: [
-    'Змотка з ліками', 'Змотка з уколами', 'Змотка з ботоксом',
-    'Змотка з косметикою', 'Змотка зі солодощами',
-    'Змотка з книгами', 'Змотка з зошитами',
-    'Змотка з банками', 'Змотка з пляшками',
-    'Змотка з іграшками', 'Змотка з технікою',
-    'Змотка з дрібничками'
+  { emoji: '🌀', label: 'Змотки', subs: [
+    { label: 'Стрейч мікс', items: ['Змотка стрейч мікс', 'Змотка дрібнички'] },
+    { label: 'Ліки / косметика', items: ['Змотка ліки', 'Змотка уколи', 'Змотка ботокс', 'Змотка косметика'] },
+    { label: 'Їжа', items: ['Змотка солодощі', 'Змотка паски'] },
+    { label: 'Книги', items: ['Змотка книги', 'Змотка зошити'] },
+    { label: 'Пупирка / рідини', items: ['Змотка пупирка банки', 'Змотка пляшки', 'Змотка пупирка'] },
+    { label: 'Техніка / іграшки', items: ['Змотка техніка', 'Змотка іграшки'] }
   ]},
-  { emoji: '📄', label: 'Документи', items: [
-    'Файлик з документами', 'Папка', 'Посвідчення водія'
+  { emoji: '💰', label: 'Цінне', subs: [
+    { label: 'Гроші', items: ['Гроші в зіп-пакеті — у водія'] },
+    { label: 'Техніка', items: ['Ноутбук у сумці — у водія', 'Ноутбук у коробці', 'Макбук', 'Телефон — у водія', 'Айфон', 'Навушники', 'Dyson', 'PlayStation'] }
   ]},
-  { emoji: '💰', label: 'Цінне', items: [
-    'Гроші в зіп-пакеті',
-    'Ноутбук у сумці', 'Ноутбук у коробці',
-    'Телефон', 'Навушники', 'Dyson', 'PlayStation'
+  { emoji: '📄', label: 'Документи', subs: [
+    { label: 'Файли', items: ['Файлик з документами — у водія', 'Документи у файлі'] },
+    { label: 'Папки', items: ['Папка з документами', 'Посвідчення водія'] }
   ]},
-  { emoji: '🧰', label: 'Нестандарт', items: [
-    'Табуретка в стрейчі', 'Картина', 'Ракетка', 'Органайзер', 'Каністра',
-    'Вихлопна труба', 'Поличка', "Дерев'яна деталь"
+  { emoji: '🧰', label: 'Нестандарт', subs: [
+    { label: 'Меблі / декор', items: ['Табуретка в стрейчі', 'Органайзер дерев\'яний', 'Картина в пупирці', 'Поличка'] },
+    { label: 'Спорт / авто', items: ['Ракетка в чохлі', 'Каністра в пупирці', 'Вихлопна труба', 'Велосипед розібраний', 'Велосипедні колеса'] },
+    { label: 'Довгі', items: ['Труби в стрейчі', 'Палки в стрейчі', 'Дерев\'яна деталь'] }
   ]},
-  { emoji: '📚', label: 'Масові', items: [
-    '2-3 предмети', '5+ предметів', '10+ предметів',
-    'Мішок', 'Багато кульків', 'Змішаний вантаж'
+  { emoji: '📚', label: 'Мікс', subs: [
+    { label: 'Кількість', items: ['2-3 предмети', '5+ предметів', '10+ предметів', 'Мішок', 'Багато кульків'] },
+    { label: 'Змішане', items: ['Сумки + коробки', 'Кульки + змотки', 'Все разом — великий мікс', 'Змішаний вантаж'] }
   ]}
 ];
+
+// Обчислюємо плоский items з subs для зворотної сумісності (getAllDescriptions, saveCustomDescription тощо)
+(function flattenCategoryItems(){
+  DESC_CATEGORIES.forEach(function(cat){
+    if (cat.subs && !cat.items) {
+      var seen = {};
+      cat.items = [];
+      cat.subs.forEach(function(s){
+        (s.items || []).forEach(function(it){
+          var k = String(it).toLowerCase();
+          if (!seen[k]) { seen[k] = true; cat.items.push(it); }
+        });
+      });
+    }
+  });
+})();
+
+// ===== СЛОВНИК СПІВПАДІНЬ (ключ → пропонований опис) =====
+// Використовується для автокомпліту в полі verifDesc
+var DESC_SYNONYMS = {
+  // Коробки
+  'коробка':       'Коробка',
+  'крафт':         'Коробка крафт',
+  'крафтов':       'Коробка крафт',
+  'біла коробка':  'Біла коробка',
+  'чорна коробка': 'Чорна коробка',
+  'нова пошта':    'Коробка НП',
+  ' нп ':          'Коробка НП',
+  'взуття':        'Коробка взуття',
+  'лампа':         'Коробка техніка (лампи)',
+  'дайсон':        'Коробка Dyson',
+  'dyson':         'Коробка Dyson',
+  'canon':         'Коробка Canon',
+  'tom ford':      'Зелена коробка Tom Ford',
+  // Валізи
+  'валіза':        'Валіза пластикова',
+  'пластик':       'Валіза пластикова',
+  'дорожня валіза':'Дорожня тканинна валіза',
+  'тканинна':      'Валіза тканинна',
+  // Рюкзаки
+  'рюкзак':        'Рюкзак тряпчаний',
+  // Сумки
+  'сумка':         'Сумка тряпчана',
+  'торба':         'Сумка тряпчана',
+  'польська':      'Польська торба клітка',
+  'клітка':        'Польська торба клітка',
+  'дорожня сумка': 'Дорожня сумка',
+  'леопард':       'Сумка леопардова',
+  'зміїна':        'Сумка зміїна',
+  'ikea':          'Сумка IKEA',
+  'ікеа':          'Сумка IKEA',
+  'мігрос':        'Сумка MIGROS',
+  'migros':        'Сумка MIGROS',
+  'aldi':          'Сумка ALDI',
+  'lidl':          'Сумка LIDL',
+  'bmw':           'Сумка BMW',
+  // Пакети
+  'кульок':        'Кульок',
+  'пакет':         'Пакет',
+  'україна':       'Кульок Україна',
+  'атб':           'Пакет АТБ',
+  'сільпо':        'Пакет Сільпо',
+  'метро':         'Пакет Метро',
+  'рошен':         'Пакет Рошен',
+  'ашан':          'Пакет Ашан',
+  'газета':        'Кульок газета',
+  // Змотки
+  'змоток':        'Змотка стрейч',
+  'змотка':        'Змотка стрейч',
+  'стрейч':        'Змотка стрейч',
+  'пупирка':       'Змотка пупирка',
+  'ліки':          'Змотка ліки',
+  'уколи':         'Змотка уколи',
+  'ботокс':        'Змотка ботокс',
+  'косметика':     'Змотка косметика',
+  'солодощі':      'Змотка солодощі',
+  'паски':         'Змотка паски',
+  'книги':         'Змотка книги',
+  'зошити':        'Змотка зошити',
+  'банки':         'Змотка пупирка банки',
+  'пляшки':        'Змотка пляшки',
+  'іграшки':       'Змотка іграшки',
+  // Цінне
+  'гроші':         'Гроші в зіп-пакеті — у водія',
+  'зіп':           'Гроші в зіп-пакеті — у водія',
+  'ноутбук':       'Ноутбук у сумці — у водія',
+  'макбук':        'Макбук',
+  'macbook':       'Макбук',
+  'телефон':       'Телефон — у водія',
+  'айфон':         'Айфон',
+  'iphone':        'Айфон',
+  'навушники':     'Навушники',
+  'playstation':   'PlayStation',
+  'плейстейшн':    'PlayStation',
+  // Документи
+  'документи':     'Файлик з документами — у водія',
+  'файл':          'Файлик з документами — у водія',
+  'папка':         'Папка з документами',
+  'посвідчення':   'Посвідчення водія',
+  // Нестандарт
+  'табуретка':     'Табуретка в стрейчі',
+  'картина':       'Картина в пупирці',
+  'ракетка':       'Ракетка в чохлі',
+  'каністра':      'Каністра в пупирці',
+  'органайзер':    'Органайзер дерев\'яний',
+  'поличка':       'Поличка',
+  'велосипед':     'Велосипед розібраний',
+  'колесо':        'Велосипедні колеса',
+  'колеса':        'Велосипедні колеса',
+  'труба':         'Труби в стрейчі',
+  'труби':         'Труби в стрейчі',
+  'палки':         'Палки в стрейчі',
+  // Мікс
+  'мікс':          'Змішаний вантаж',
+  'мішок':         'Мішок'
+};
 
 var CUSTOM_DESC_KEY = 'esco_custom_descriptions_v1';
 
@@ -7458,7 +7619,7 @@ function fillDescDatalist(datalistId) {
   }).join('');
 }
 
-// Рендерить chip picker: категорії (expand) → елементи
+// Рендерить chip picker: категорії (expand) → підтипи + елементи
 function renderDescCategoryPicker(containerEl, inputEl) {
   if (!containerEl || !inputEl) return;
   containerEl.innerHTML = '';
@@ -7472,24 +7633,54 @@ function renderDescCategoryPicker(containerEl, inputEl) {
 
   var expanded = -1;
 
+  function pickItem(item) {
+    inputEl.value = item;
+    inputEl.focus();
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
   function renderItems(cat) {
     itemsRow.innerHTML = '';
-    // Стандартні елементи категорії
-    cat.items.forEach(function(item){
-      var chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'desc-item-chip';
-      chip.textContent = item;
-      chip.onclick = function(ev){
-        ev.preventDefault();
-        ev.stopPropagation();
-        inputEl.value = item;
-        inputEl.focus();
-        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-      };
-      itemsRow.appendChild(chip);
-    });
+    // Якщо є subs — рендеримо групами з заголовками підтипів
+    if (cat.subs && cat.subs.length) {
+      cat.subs.forEach(function(sub){
+        var group = document.createElement('div');
+        group.className = 'desc-sub-group';
+        var head = document.createElement('div');
+        head.className = 'desc-sub-label';
+        head.textContent = sub.label;
+        group.appendChild(head);
+        var chips = document.createElement('div');
+        chips.className = 'desc-sub-chips';
+        (sub.items || []).forEach(function(item){
+          var chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'desc-item-chip';
+          chip.textContent = item;
+          chip.onclick = function(ev){
+            ev.preventDefault(); ev.stopPropagation();
+            pickItem(item);
+          };
+          chips.appendChild(chip);
+        });
+        group.appendChild(chips);
+        itemsRow.appendChild(group);
+      });
+    } else {
+      // Fallback — плоский список (для кастомної категорії)
+      (cat.items || []).forEach(function(item){
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'desc-item-chip';
+        chip.textContent = item;
+        chip.onclick = function(ev){
+          ev.preventDefault(); ev.stopPropagation();
+          pickItem(item);
+        };
+        itemsRow.appendChild(chip);
+      });
+    }
     itemsRow.style.display = 'flex';
   }
 
@@ -7577,6 +7768,117 @@ function buildDescSuggestions() {
   var picker = document.getElementById('verifDescPicker');
   var input = document.getElementById('verifDesc');
   if (picker && input) renderDescCategoryPicker(picker, input);
+  var listEl = document.getElementById('verifDescSuggest');
+  if (input && listEl) wireDescSuggest(input, listEl);
+}
+
+// Словник ключ→опис + усі описи (включно з кастомними) →
+// побудова списку підказок для введеного тексту.
+function computeDescSuggestions(text) {
+  var q = String(text || '').trim().toLowerCase();
+  if (!q) return [];
+
+  var results = [];
+  var seen = {};
+  function push(kw, value) {
+    var k = String(value).toLowerCase();
+    if (seen[k]) return;
+    seen[k] = true;
+    results.push({ keyword: kw, value: value });
+  }
+
+  // 1) Синоніми — ключ зустрічається у введеному тексті
+  Object.keys(DESC_SYNONYMS).forEach(function(key){
+    var k = String(key).trim();
+    if (!k) return;
+    if (q.indexOf(k) !== -1) {
+      push(k, DESC_SYNONYMS[key]);
+    }
+  });
+
+  // 2) Повний словник описів — пряме входження підрядка
+  try {
+    var all = getAllDescriptions();
+    all.forEach(function(d){
+      if (d.toLowerCase().indexOf(q) !== -1) push('', d);
+    });
+  } catch (e) {}
+
+  // 3) Фузі-пошук по словах в описах (кожне слово q має бути в описі)
+  if (results.length < 6) {
+    var words = q.split(/\s+/).filter(Boolean);
+    try {
+      var all2 = getAllDescriptions();
+      all2.forEach(function(d){
+        var dl = d.toLowerCase();
+        var allIn = words.every(function(w){ return dl.indexOf(w) !== -1; });
+        if (allIn) push('', d);
+      });
+    } catch (e) {}
+  }
+
+  return results.slice(0, 8);
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+
+// Виділяє введене слово жирним у пропозиції
+function highlightMatch(text, query) {
+  if (!query) return escHtml(text);
+  var q = String(query).trim();
+  if (!q) return escHtml(text);
+  var parts = q.split(/\s+/).filter(Boolean).sort(function(a,b){ return b.length - a.length; });
+  var out = escHtml(text);
+  parts.forEach(function(w){
+    if (!w) return;
+    var re = new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    out = out.replace(re, '<b>$1</b>');
+  });
+  return out;
+}
+
+function wireDescSuggest(inputEl, listEl) {
+  if (inputEl._descSuggestWired) return;
+  inputEl._descSuggestWired = true;
+
+  function close() {
+    listEl.classList.remove('open');
+    listEl.innerHTML = '';
+  }
+  function open() {
+    var suggestions = computeDescSuggestions(inputEl.value);
+    if (!suggestions.length) { close(); return; }
+    listEl.innerHTML = '';
+    suggestions.forEach(function(s){
+      var item = document.createElement('div');
+      item.className = 'desc-suggest-item';
+      var kwHtml = s.keyword ? '<span class="desc-suggest-kw">' + escHtml(s.keyword) + '</span>' : '';
+      item.innerHTML = kwHtml + '<span class="desc-suggest-text">' + highlightMatch(s.value, inputEl.value) + '</span>';
+      item.onmousedown = function(ev){
+        // mousedown щоб встигло відпрацювати до blur
+        ev.preventDefault();
+        inputEl.value = s.value;
+        close();
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      listEl.appendChild(item);
+    });
+    listEl.classList.add('open');
+  }
+
+  inputEl.addEventListener('input', open);
+  inputEl.addEventListener('focus', open);
+  inputEl.addEventListener('blur', function(){
+    setTimeout(close, 150);
+  });
+  inputEl.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') close();
+  });
 }
 
 function openVerificationForm(pkgObj) {
