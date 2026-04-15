@@ -157,7 +157,11 @@
             opacity: 1;
             transform: translate(-50%, -50%) scale(1);
         }
-        .result-toast.error { background: rgba(239, 68, 68, 0.95); }
+        .result-toast.success  { background: rgba(16, 185, 129, 0.95); }   /* green */
+        .result-toast.already  { background: rgba(100, 116, 139, 0.95); }  /* slate */
+        .result-toast.warn     { background: rgba(245, 158, 11, 0.95); }   /* amber */
+        .result-toast.created  { background: rgba(139, 92, 246, 0.95); }   /* violet */
+        .result-toast.error    { background: rgba(239, 68, 68, 0.95); }    /* red */
         .result-toast-icon { font-size: 36px; margin-bottom: 6px; }
         .result-toast-label {
             font-size: 11px;
@@ -387,9 +391,10 @@
 
     <!-- RESULT TOAST -->
     <div class="result-toast" id="resultToast">
-        <div class="result-toast-icon">✅</div>
-        <div class="result-toast-label">Відскановано</div>
+        <div class="result-toast-icon" id="toastIcon">✅</div>
+        <div class="result-toast-label" id="toastLabel">Відскановано</div>
         <div class="result-toast-value" id="toastValue">—</div>
+        <div class="result-toast-label" id="toastStatus" style="margin-top:6px;opacity:0.85;"></div>
     </div>
 
     <!-- BOTTOM CONTROLS -->
@@ -419,6 +424,9 @@
     </div>
 
     <script>
+        // ==== API ====
+        var GAS_URL = 'https://script.google.com/macros/s/AKfycbwTbVML5OSo43a4J4MPHzHyB06uklbooJrQGscvPZ4f7y4aH0biQvxUBfXs1hzbSw-DxA/exec';
+
         var scanner = null;
         var scanHistory = [];
         var isScanning = false;
@@ -488,24 +496,79 @@
             if (scanner) scanner.pause(true);
             if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
 
-            addToHistory(decodedText);
-            showToast(decodedText);
             document.getElementById('lastScanCode').textContent = decodedText;
             document.getElementById('lastScanBar').classList.add('show');
+            document.getElementById('counterScanned').textContent = '📊 ' + (scanHistory.length + 1);
+
+            // Показуємо проміжний тост "перевірка..."
+            showToast({
+                variant: '',
+                icon: '⏳',
+                label: 'Перевірка...',
+                value: decodedText,
+                status: ''
+            });
+
+            // Відправляємо на бекенд
+            scanTTN(decodedText);
+        }
+
+        function scanTTN(ttn) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'scanTTN', ttn: ttn })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) { handleScanResult(ttn, res); })
+            .catch(function(err) {
+                handleScanResult(ttn, { ok: false, error: err.message || 'Немає зв\'язку' });
+            });
+        }
+
+        function handleScanResult(ttn, res) {
+            var variant = 'error', icon = '❌', label = 'Помилка', statusTxt = '';
+
+            if (res && res.ok) {
+                if (res.action === 'updated') {
+                    variant = 'success'; icon = '✅'; label = 'Оформлено';
+                    statusTxt = (res.data && res.data['Піб відправника']) || res.message || '';
+                } else if (res.action === 'already') {
+                    variant = 'already'; icon = 'ℹ️'; label = res.message || 'Вже оброблено';
+                    statusTxt = 'Статус: ' + (res.status || '—');
+                } else if (res.action === 'warn') {
+                    variant = 'warn'; icon = '⚠️'; label = res.message || 'Увага';
+                    statusTxt = 'Статус: ' + (res.status || '—');
+                } else if (res.action === 'created') {
+                    variant = 'created'; icon = '🆕'; label = 'Невідома посилку створено';
+                    statusTxt = 'Статус: Невідомо';
+                } else {
+                    variant = 'success'; icon = '✅'; label = 'OK';
+                    statusTxt = res.message || '';
+                }
+            } else {
+                statusTxt = (res && res.error) || 'Невідома помилка';
+            }
+
+            addToHistory(ttn, variant, statusTxt);
             document.getElementById('mainBtn').style.display = 'block';
             document.getElementById('counterScanned').textContent = '📊 ' + scanHistory.length;
 
-            // Авто-підготовка до наступного скану через 1.2с (щоб юзер не тиснув кнопку кожен раз)
+            showToast({ variant: variant, icon: icon, label: label, value: ttn, status: statusTxt });
+
             setTimeout(function() {
-                if (!isScanning) return;
-                // Прибираємо тост, але камера на паузі поки юзер не натисне
                 document.getElementById('resultToast').classList.remove('show');
-            }, 1500);
+            }, 2500);
         }
 
-        function showToast(code) {
+        function showToast(opts) {
             var t = document.getElementById('resultToast');
-            document.getElementById('toastValue').textContent = code;
+            t.className = 'result-toast';
+            if (opts.variant) t.classList.add(opts.variant);
+            document.getElementById('toastIcon').textContent = opts.icon || '✅';
+            document.getElementById('toastLabel').textContent = opts.label || '';
+            document.getElementById('toastValue').textContent = opts.value || '';
+            document.getElementById('toastStatus').textContent = opts.status || '';
             t.classList.add('show');
         }
 
@@ -530,11 +593,27 @@
             }).catch(function() {});
         }
 
-        function addToHistory(code) {
+        function addToHistory(code, variant, status) {
             var time = new Date().toTimeString().substring(0, 8);
-            scanHistory.unshift({ code: code, time: time });
+            scanHistory.unshift({ code: code, time: time, variant: variant || '', status: status || '' });
             if (scanHistory.length > 50) scanHistory.pop();
             renderHistory();
+        }
+
+        function variantDot(v) {
+            var c = '#64748b';
+            if (v === 'success') c = '#10b981';
+            else if (v === 'warn') c = '#f59e0b';
+            else if (v === 'created') c = '#8b5cf6';
+            else if (v === 'error') c = '#ef4444';
+            else if (v === 'already') c = '#64748b';
+            return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:6px;flex-shrink:0;"></span>';
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, function(ch) {
+                return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch];
+            });
         }
 
         function renderHistory() {
@@ -544,9 +623,12 @@
                 return;
             }
             list.innerHTML = scanHistory.map(function(item) {
-                return '<div class="history-item">' +
-                    '<span class="history-code">' + item.code + '</span>' +
-                    '<span class="history-time">' + item.time + '</span>' +
+                return '<div class="history-item" style="flex-direction:column;align-items:stretch;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
+                        '<span class="history-code">' + variantDot(item.variant) + escapeHtml(item.code) + '</span>' +
+                        '<span class="history-time">' + item.time + '</span>' +
+                    '</div>' +
+                    (item.status ? '<div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:4px;">' + escapeHtml(item.status) + '</div>' : '') +
                 '</div>';
             }).join('');
         }
