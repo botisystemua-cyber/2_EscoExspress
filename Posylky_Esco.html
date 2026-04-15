@@ -7909,14 +7909,6 @@ async function applyTag() {
 
     if (ok > 0) {
         showToast('✅ Тег «' + tagName + '» додано: ' + ok + ' контакт(ів)');
-        // Зберігаємо тег в CRM (Google Sheets) для кожного ліда
-        for (const t of targets) {
-            const p = passengers.find(x => x['PAX_ID'] === t.paxId);
-            if (p) {
-                await apiPost('updateField', { sheet: p._sheet || '', pax_id: t.paxId, col: 'Тег', value: p['Тег'] || tagName });
-            }
-        }
-        render();
     }
 }
 
