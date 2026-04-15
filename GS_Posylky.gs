@@ -939,44 +939,68 @@ function apiPermanentDelete(params) {
 // ============================================================
 
 /**
- * apiScanTTN — сканування ТТН при прибутті посилки
+ * apiScanTTN — сканування ТТН при прибутті посилки (тільки УК→ЄВ)
  * params: { ttn }
  *
- * ТИП A: знайдено → оновити статус, показати дані + дублікати
- * ТИП B: не знайдено → створити "невідому" посилку
+ * Логіка за статусом посилки:
+ *   Зареєстровано → Оформлення            (action: 'updated')
+ *   Оформлення    → без змін              (action: 'already')
+ *   Провірка      → без змін              (action: 'already')
+ *   Готово/Відправка/Доставка/Доставлено/Повернення → попередження (action: 'warn')
+ *   не знайдено   → створити з Невідомо   (action: 'created')
  */
 function apiScanTTN(params) {
   var ttn = String(params.ttn || '').trim();
   if (!ttn) return { ok: false, error: 'ТТН не вказано' };
 
-  // Шукаємо в УК→ЄВ (де є Номер ТТН)
+  // Шукаємо тільки в УК→ЄВ (посилки УК→ЄВ мають Номер ТТН)
   var sheetUe = getUeSheet();
   var found = findRow(sheetUe, 'Номер ТТН', ttn);
 
   if (found) {
-    // ТИП A — знайдено
-    var ctrlIdx = found.headers.indexOf('Контроль перевірки');
-    var dateIdx = found.headers.indexOf('Дата перевірки');
+    var statusIdx = found.headers.indexOf('Статус посилки');
+    var currentStatus = statusIdx !== -1 ? String(found.data[statusIdx] || '').trim() : '';
+    var action = 'already';
+    var message = '';
 
-    if (ctrlIdx !== -1) sheetUe.getRange(found.rowNum, ctrlIdx + 1).setValue('В перевірці');
-    if (dateIdx !== -1) sheetUe.getRange(found.rowNum, dateIdx + 1).setValue(now());
-
-    var obj = pkgObjFromData(found.headers, found.data, SHEETS.UE, found.rowNum);
-    obj['Контроль перевірки'] = 'В перевірці';
-    obj['Дата перевірки'] = now();
-
-    // Шукаємо дублікати по отримувачу
-    var duplicates = [];
-    if (obj['Піб отримувача'] || obj['Телефон отримувача']) {
-      duplicates = findDuplicatesByRecipientInternal(
-        obj['PKG_ID'], obj['Піб отримувача'], obj['Телефон отримувача']
-      );
+    if (currentStatus === '' || currentStatus === 'Зареєстровано') {
+      // Оновити на "Оформлення"
+      if (statusIdx !== -1) {
+        sheetUe.getRange(found.rowNum, statusIdx + 1).setValue('Оформлення');
+        found.data[statusIdx] = 'Оформлення';
+      }
+      action = 'updated';
+      message = 'Статус оновлено: Оформлення';
+    } else if (currentStatus === 'Оформлення') {
+      action = 'already';
+      message = 'Вже оформлено';
+    } else if (currentStatus === 'Провірка') {
+      action = 'already';
+      message = 'Вже на перевірці';
+    } else if (currentStatus === 'Доставлено' || currentStatus === 'Повернення') {
+      action = 'warn';
+      message = 'Посилка вже закрита (' + currentStatus + ')';
+    } else if (currentStatus === 'Невідомо') {
+      action = 'warn';
+      message = 'Посилка позначена як Невідомо';
+    } else {
+      action = 'warn';
+      message = 'Статус: ' + currentStatus;
     }
 
-    return { ok: true, type: 'found', data: obj, duplicates: duplicates };
+    var obj = pkgObjFromData(found.headers, found.data, SHEETS.UE, found.rowNum);
+
+    return {
+      ok: true,
+      type: 'found',
+      action: action,
+      message: message,
+      status: obj['Статус посилки'],
+      data: obj
+    };
   }
 
-  // ТИП B — не знайдено → створити нову "невідому" посилку
+  // Не знайдено → створити нову посилку зі статусом "Невідомо"
   var pkgId = genId('PKG');
   var newObj = {};
   PKG_UE_COLS.forEach(function(c) { newObj[c] = ''; });
@@ -986,16 +1010,23 @@ function apiScanTTN(params) {
   newObj['SOURCE_SHEET'] = SHEETS.UE;
   newObj['Дата створення'] = now();
   newObj['Номер ТТН'] = ttn;
-  newObj['Статус ліда'] = 'Невідомий';
+  newObj['Статус посилки'] = 'Невідомо';
+  newObj['Статус ліда'] = 'Новий';
   newObj['Статус CRM'] = 'Активний';
-  newObj['Контроль перевірки'] = 'В перевірці';
-  newObj['Дата перевірки'] = now();
 
   var all = getAllData(sheetUe);
   var headers = all.headers.length > 0 ? all.headers : PKG_UE_COLS;
   sheetUe.appendRow(objToRow(headers, newObj));
 
-  return { ok: true, type: 'new', data: newObj, pkg_id: pkgId };
+  return {
+    ok: true,
+    type: 'new',
+    action: 'created',
+    message: 'Нову посилку створено (Невідомо)',
+    status: 'Невідомо',
+    data: newObj,
+    pkg_id: pkgId
+  };
 }
 
 /**
