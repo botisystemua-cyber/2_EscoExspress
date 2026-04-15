@@ -7172,6 +7172,13 @@ async function applyTag() {
   border-bottom: 1px solid #e5e7eb;
   word-break: break-word;
 }
+.verif-scan-meta {
+  padding: 6px 14px; font-size: 11px;
+  background: #eff6ff; color: #1e40af;
+  border-bottom: 1px solid #bfdbfe;
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.verif-scan-meta b { color: #1e3a8a; font-weight: 700; }
 .verif-sessions {
   display: flex; gap: 6px; padding: 8px 12px;
   background: #fff7ed; border-bottom: 1px solid #fed7aa;
@@ -7423,6 +7430,7 @@ async function applyTag() {
       <button class="verif-header-close" onclick="closeVerificationForm()">✕</button>
     </div>
     <div class="verif-pkg-title" id="verifPkgTitle">—</div>
+    <div class="verif-scan-meta" id="verifScanMeta" style="display:none;"></div>
     <!-- Active concurrent sessions (max 3) -->
     <div class="verif-sessions" id="verifSessionsBar" style="display:none;"></div>
 
@@ -7926,7 +7934,7 @@ function ttnOnScanSuccess(decodedText) {
   fetch(GAS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'scanTTN', ttn: decodedText })
+    body: JSON.stringify({ action: 'scanTTN', ttn: decodedText, скан_автор: getCurrentOperator(), mode: (typeof ttnMode !== 'undefined' ? ttnMode : '') })
   })
   .then(function(r){ return r.json(); })
   .then(function(res){ ttnHandleResult(decodedText, res); })
@@ -8621,6 +8629,29 @@ function openVerificationForm(pkgObj, opts) {
 
   document.getElementById('verifPkgTitle').textContent =
     (pkgObj['Номер ТТН'] || '—') + ' • ' + (pkgObj['Піб відправника'] || '—');
+
+  // Показати хто/коли сканував + коротка зведена інфа з простого скану
+  var metaEl = document.getElementById('verifScanMeta');
+  if (metaEl) {
+    var scanAuthor = pkgObj['Скан автор'] || '';
+    var scanDate   = pkgObj['Дата реєстрації скану'] || '';
+    var qtyTotP    = pkgObj['Кількість місць'] || '';
+    var npPayerP   = pkgObj['НП платник'] || '';
+    var npSumP     = pkgObj['НП сума грн'] || pkgObj['НП сума'] || '';
+    var bits = [];
+    if (scanAuthor) bits.push('👤 <b>' + scanAuthor + '</b>');
+    if (scanDate)   bits.push('🕒 ' + scanDate);
+    if (qtyTotP)    bits.push('📦 ' + qtyTotP + ' місць');
+    if (npPayerP)   bits.push('💳 НП: ' + npPayerP + (npSumP ? ' ' + npSumP + '₴' : ''));
+    if (bits.length) {
+      metaEl.innerHTML = '📷 Сканував: ' + bits.join(' · ');
+      metaEl.style.display = 'flex';
+    } else {
+      metaEl.style.display = 'none';
+      metaEl.innerHTML = '';
+    }
+  }
+
   var snap = opts.restore && opts.restore.snapshot;
   document.getElementById('verifDesc').value = snap ? snap.desc : (pkgObj['Опис'] || '');
   document.getElementById('verifWeight').value = snap ? snap.weight : (pkgObj['Кг'] || '');
@@ -8630,13 +8661,14 @@ function openVerificationForm(pkgObj, opts) {
   // Photo gate: scroll / enable only after weight is filled
   verifUpdatePhotoGate();
 
-  // Кількість місць: пріоритет — значення з квадратика сканера, далі БД, далі 1
+  // Кількість місць: спершу беремо з простого скану (БД), інакше з квадратика сканера
   var qCur = 1, qTot = 1;
-  if (ttnIsScanning && ttnQtyValue > 0) {
+  var storedTot = parseInt(pkgObj['Кількість місць'] || pkgObj['Місць'] || '', 10);
+  if (storedTot > 0) {
+    qTot = storedTot;
+    qCur = parseInt(pkgObj['Поточне місце'] || '1', 10) || 1;
+  } else if (ttnIsScanning && ttnQtyValue > 0) {
     qTot = ttnQtyValue;
-  } else {
-    var storedTot = parseInt(pkgObj['Кількість місць'] || pkgObj['Місць'] || '', 10);
-    if (storedTot > 0) { qTot = storedTot; qCur = parseInt(pkgObj['Поточне місце'] || '1', 10) || 1; }
   }
   if (snap && snap.qtyTot) qTot = parseInt(snap.qtyTot, 10) || qTot;
   if (snap && snap.qty)    qCur = parseInt(snap.qty, 10) || qCur;

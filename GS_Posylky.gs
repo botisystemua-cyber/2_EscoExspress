@@ -953,10 +953,28 @@ function apiPermanentDelete(params) {
 function apiScanTTN(params) {
   var ttn = String(params.ttn || '').trim();
   if (!ttn) return { ok: false, error: 'ТТН не вказано' };
+  var scanAuthor = String(params['скан_автор'] || '').trim();
+  var scanMode   = String(params['mode'] || '').trim(); // 'scan' | 'verify' | ''
 
   // Шукаємо тільки в УК→ЄВ (посилки УК→ЄВ мають Номер ТТН)
   var sheetUe = getUeSheet();
   var found = findRow(sheetUe, 'Номер ТТН', ttn);
+
+  // Helper: record who/when scanned this row
+  function recordScanMeta(found, who) {
+    var h = found.headers;
+    var pairs = [
+      ['Дата реєстрації скану', now()],
+      ['Скан автор', who || '']
+    ];
+    pairs.forEach(function(p){
+      var i = h.indexOf(p[0]);
+      if (i !== -1 && p[1] !== '') {
+        sheetUe.getRange(found.rowNum, i + 1).setValue(p[1]);
+        found.data[i] = p[1];
+      }
+    });
+  }
 
   if (found) {
     var statusIdx = found.headers.indexOf('Статус посилки');
@@ -970,6 +988,7 @@ function apiScanTTN(params) {
         sheetUe.getRange(found.rowNum, statusIdx + 1).setValue('Оформлення');
         found.data[statusIdx] = 'Оформлення';
       }
+      recordScanMeta(found, scanAuthor);
       action = 'updated';
       message = 'Статус оновлено: Оформлення';
     } else if (currentStatus === 'Оформлення') {
@@ -978,10 +997,12 @@ function apiScanTTN(params) {
         sheetUe.getRange(found.rowNum, statusIdx + 1).setValue('Провірка');
         found.data[statusIdx] = 'Провірка';
       }
+      recordScanMeta(found, scanAuthor);
       action = 'start_verify';
       message = 'Відкрити форму перевірки';
     } else if (currentStatus === 'Провірка') {
       // Вже в процесі перевірки — просто відкрити форму
+      // (автора не оновлюємо, бо провірку вже почав попередній)
       action = 'start_verify';
       message = 'Продовжити перевірку';
     } else if (currentStatus === 'Готово') {
