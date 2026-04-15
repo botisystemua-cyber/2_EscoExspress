@@ -712,6 +712,34 @@ body {
 }
 .card-scan-strip--scanned { background:#eff6ff; color:#1e40af; border-top-color:#bfdbfe; }
 .card-scan-strip--verify  { background:#fff7ed; color:#9a3412; border-top-color:#fed7aa; }
+.card-scan-strip--naprov  {
+  background:#fefce8; color:#713f12; border-top-color:#fde68a;
+  flex-direction: column; align-items: stretch; padding: 6px 10px; gap: 6px;
+}
+.nprov-header { display:flex; align-items:center; gap:6px; font-weight:700; }
+.nprov-chips  { display:flex; flex-wrap:wrap; gap:4px; }
+.nprov-chip {
+  display:inline-flex; align-items:center; gap:3px;
+  padding: 2px 7px; border-radius: 10px;
+  font-size: 10px; font-weight: 600;
+  border: 1px solid transparent;
+}
+.nprov-chip.ok   { background:#dcfce7; color:#065f46; border-color:#86efac; }
+.nprov-chip.need { background:#fee2e2; color:#991b1b; border-color:#fca5a5; animation: nprovPulse 1.6s ease-in-out infinite; }
+@keyframes nprovPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50%     { box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+}
+.nprov-actions { display:flex; gap:6px; }
+.nprov-mgr-btn {
+  padding: 6px 12px; border-radius: 8px;
+  background: #1e40af; color: #fff; border: none;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  flex: 1;
+}
+.nprov-mgr-btn:hover { background: #1e3a8a; }
+.nprov-mgr-btn.ready { background: #059669; }
+.nprov-mgr-btn.ready:hover { background: #047857; }
 .card-scan-thumb {
   width: 32px; height: 32px; object-fit: cover;
   border-radius: 4px; margin-left: auto;
@@ -1991,6 +2019,7 @@ body {
       <button class="filter-chip active" data-pkgstatus="all" onclick="setPkgStatusFilter('all')">Всі <span class="chip-count" id="pkgcntAll">0</span></button>
       <button class="filter-chip" data-pkgstatus="scanned" onclick="setPkgStatusFilter('scanned')">📷 Скановані <span class="chip-count" id="pkgcntScanned">0</span></button>
       <button class="filter-chip" data-pkgstatus="verify" onclick="setPkgStatusFilter('verify')">🔍 Провірка <span class="chip-count" id="pkgcntVerify">0</span></button>
+      <button class="filter-chip" data-pkgstatus="na_provirci" onclick="setPkgStatusFilter('na_provirci')">⏳ На провірці <span class="chip-count" id="pkgcntNaProvirci">0</span></button>
       <button class="filter-chip" data-pkgstatus="ready" onclick="setPkgStatusFilter('ready')">✅ Готово <span class="chip-count" id="pkgcntReady">0</span></button>
     </div>
     <!-- Cards List (parcels view) -->
@@ -2866,11 +2895,13 @@ function filterData() {
     data = data.filter(p => p['Статус оплати'] === currentPayFilter);
   }
 
-  // Package-status filter (main-screen chip bar: Скановані / Провірка / Готово)
+  // Package-status filter (main-screen chip bar: Скановані / Провірка / На провірці / Готово)
   if (currentPkgStatusFilter === 'scanned') {
     data = data.filter(p => p['Статус посилки'] === 'Оформлення');
   } else if (currentPkgStatusFilter === 'verify') {
     data = data.filter(p => p['Статус посилки'] === 'Провірка');
+  } else if (currentPkgStatusFilter === 'na_provirci') {
+    data = data.filter(p => p['Статус посилки'] === 'На провірці');
   } else if (currentPkgStatusFilter === 'ready') {
     data = data.filter(p => p['Статус посилки'] === 'Готово');
   }
@@ -3037,6 +3068,34 @@ function renderCard(p) {
     if (weight)     parts.push('⚖️ ' + weight + ' кг');
     if (innerNum)   parts.push('🔢 ' + innerNum);
     scanInfoStrip = `<div class="card-scan-strip card-scan-strip--verify">🔍 В провірці${parts.length ? ' · ' + parts.join(' · ') : ''}${thumb}</div>`;
+  } else if (statusPkg === 'На провірці') {
+    // Перевіряючий закінчив — показуємо ЩО ЗАПОВНИВ (зелене) та ЩО НЕ ВИСТАЧАЄ (червоне)
+    const thumb = photoUrl ? `<img src="${photoUrl}" class="card-scan-thumb" onclick="event.stopPropagation(); window.open('${photoUrl}','_blank')" alt="">` : '';
+    const chips = [];
+    // Зелене — заповнив перевіряючий
+    if (scanAuthor) chips.push(`<span class="nprov-chip ok">👤 ${scanAuthor}</span>`);
+    if (descText)   chips.push(`<span class="nprov-chip ok">📄 ${descText.substring(0,26)}${descText.length>26?'…':''}</span>`);
+    if (placesTotal) chips.push(`<span class="nprov-chip ok">📦 ${placesTotal} поз</span>`);
+    if (weight)     chips.push(`<span class="nprov-chip ok">⚖️ ${weight} кг</span>`);
+    if (photoUrl)   chips.push(`<span class="nprov-chip ok">📷 фото</span>`);
+    // Червоне — має заповнити менеджер
+    const priceVal = p['Ціна'] || '';
+    if (!innerNum) chips.push(`<span class="nprov-chip need">🔢 Внутрішній №</span>`);
+    else           chips.push(`<span class="nprov-chip ok">🔢 ${innerNum}</span>`);
+    if (!priceVal) chips.push(`<span class="nprov-chip need">💰 Ціна</span>`);
+    else           chips.push(`<span class="nprov-chip ok">💰 ${priceVal}</span>`);
+
+    const needsManager = !innerNum || !priceVal;
+    const mgrBtn = needsManager
+      ? `<button class="nprov-mgr-btn" onclick="event.stopPropagation(); openManagerFinalize('${pkgId}')">🧑‍💼 Дозаповнити</button>`
+      : `<button class="nprov-mgr-btn ready" onclick="event.stopPropagation(); finalizeReadyPackage('${pkgId}')">✅ Фіналізувати</button>`;
+
+    scanInfoStrip = `
+      <div class="card-scan-strip card-scan-strip--naprov">
+        <div class="nprov-header">⏳ На провірці · перевіряючий ${scanAuthor || ''} закінчив${scanDate ? ' · ' + scanDate : ''}${thumb}</div>
+        <div class="nprov-chips">${chips.join('')}</div>
+        <div class="nprov-actions">${mgrBtn}</div>
+      </div>`;
   }
 
   // Meta tags (configurable via column configurator)
@@ -3227,7 +3286,7 @@ function getFieldOptions(col) {
   const opts = {
     'Статус ліда':      ['Новий', 'В роботі', 'Підтверджено', 'Відмова'],
     'Статус оплати':    ['Не оплачено', 'Частково', 'Оплачено'],
-    'Статус посилки':   ['Зареєстровано', 'Оформлення', 'Провірка', 'Готово', 'Відправка', 'Доставка', 'Доставлено', 'Повернення', 'Невідомо'],
+    'Статус посилки':   ['Зареєстровано', 'Оформлення', 'Провірка', 'На провірці', 'Готово', 'Відправка', 'Доставка', 'Доставлено', 'Повернення', 'Невідомо'],
     'Статус CRM':       ['Активний', 'Архів'],
     'Валюта оплати':    ['UAH', 'EUR', 'CHF', 'USD', 'PLN', 'CZK'],
     'Валюта завдатку':  ['UAH', 'EUR', 'CHF', 'USD', 'PLN', 'CZK'],
@@ -3914,12 +3973,14 @@ function updatePkgStatusCounters() {
     var base = allData.filter(function(p) { return p['Статус CRM'] !== 'Архів' && p['Напрям'] === dirKey; });
     var cAll      = base.length;
     var cScanned  = base.filter(function(p) { return p['Статус посилки'] === 'Оформлення'; }).length;
-    var cVerify   = base.filter(function(p) { return p['Статус посилки'] === 'Провірка';  }).length;
-    var cReady    = base.filter(function(p) { return p['Статус посилки'] === 'Готово';    }).length;
+    var cVerify   = base.filter(function(p) { return p['Статус посилки'] === 'Провірка';   }).length;
+    var cNaProv   = base.filter(function(p) { return p['Статус посилки'] === 'На провірці';}).length;
+    var cReady    = base.filter(function(p) { return p['Статус посилки'] === 'Готово';     }).length;
     var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
     set('pkgcntAll', cAll);
     set('pkgcntScanned', cScanned);
     set('pkgcntVerify', cVerify);
+    set('pkgcntNaProvirci', cNaProv);
     set('pkgcntReady', cReady);
   } catch(e) { console.error('updatePkgStatusCounters error:', e); }
 }
@@ -7423,6 +7484,37 @@ async function applyTag() {
 .desc-suggest-text b { color: var(--primary, #3b82f6); }
 </style>
 
+<!-- Manager Finalize Modal -->
+<div class="verif-overlay" id="mgrFinalizeOverlay">
+  <div class="verif-panel" style="max-width:420px;">
+    <div class="verif-header">
+      <div class="verif-header-title">🧑‍💼 Фіналізація менеджером</div>
+      <button class="verif-header-close" onclick="closeManagerFinalize()">✕</button>
+    </div>
+    <div class="verif-pkg-title" id="mgrFinTitle">—</div>
+    <div class="verif-scan-meta" id="mgrFinMeta" style="display:none;"></div>
+    <div class="verif-body">
+      <div id="mgrFinSummary" style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px;"></div>
+      <div>
+        <label class="verif-field-label">🔢 Внутрішній № <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="verif-input" id="mgrFinInner" placeholder="напр. 0423 або E-12">
+      </div>
+      <div>
+        <label class="verif-field-label">💰 Ціна посилки <span style="color:var(--danger)">*</span></label>
+        <input type="number" step="0.01" min="0" inputmode="decimal" class="verif-input" id="mgrFinPrice" placeholder="напр. 350">
+      </div>
+      <div>
+        <label class="verif-field-label">💬 Коментар менеджера</label>
+        <textarea class="verif-textarea" id="mgrFinComment" placeholder="Необов'язково"></textarea>
+      </div>
+      <div class="verif-error" id="mgrFinError"></div>
+    </div>
+    <div class="verif-footer">
+      <button class="verif-save-btn" id="mgrFinSaveBtn" onclick="managerFinalizeSave()">✅ Готово (фіналізувати)</button>
+    </div>
+  </div>
+</div>
+
 <div class="verif-overlay" id="verifOverlay">
   <div class="verif-panel">
     <div class="verif-header">
@@ -7453,14 +7545,11 @@ async function applyTag() {
         <input type="number" step="0.1" min="0" inputmode="decimal" class="verif-input" id="verifWeight" placeholder="напр. 2.3" onblur="verifOnWeightEntered()" onchange="verifOnWeightEntered()">
       </div>
 
-      <!-- Внутрішній номер -->
+      <!-- Кількість позицій (всього в посилці) -->
       <div>
-        <label class="verif-field-label">🔢 Внутрішній номер</label>
-        <input type="text" class="verif-input" id="verifInnerNum" placeholder="напр. 0423 або E-12">
+        <label class="verif-field-label">📦 Кількість позицій</label>
+        <input type="number" min="1" step="1" inputmode="numeric" class="verif-input" id="verifQtyTotal" value="1">
       </div>
-
-      <!-- Приховані поля кількості місць (значення виставляється з квадратика на сканері) -->
-      <input type="hidden" id="verifQtyTotal" value="1">
       <input type="hidden" id="verifQty" value="1">
 
       <!-- Photo (з'являється після ваги; фото робиться на кінці) -->
@@ -8561,7 +8650,6 @@ function verifSnapshotCurrent() {
       desc:     (document.getElementById('verifDesc')||{}).value || '',
       weight:   (document.getElementById('verifWeight')||{}).value || '',
       comment:  (document.getElementById('verifComment')||{}).value || '',
-      innerNum: (document.getElementById('verifInnerNum')||{}).value || '',
       qtyTot:   (document.getElementById('verifQtyTotal')||{}).value || '1',
       qty:      (document.getElementById('verifQty')||{}).value || '1'
     }
@@ -8656,8 +8744,6 @@ function openVerificationForm(pkgObj, opts) {
   document.getElementById('verifDesc').value = snap ? snap.desc : (pkgObj['Опис'] || '');
   document.getElementById('verifWeight').value = snap ? snap.weight : (pkgObj['Кг'] || '');
   document.getElementById('verifComment').value = snap ? snap.comment : (pkgObj['Примітка'] || '');
-  var innerEl = document.getElementById('verifInnerNum');
-  if (innerEl) innerEl.value = snap ? snap.innerNum : (pkgObj['Внутрішній №'] || '');
   // Photo gate: scroll / enable only after weight is filled
   verifUpdatePhotoGate();
 
@@ -8718,6 +8804,120 @@ function openVerificationForm(pkgObj, opts) {
 
   document.getElementById('verifOverlay').classList.add('open');
   verifRenderSessionsBar();
+}
+
+// ── Manager Finalize ─────────────────────────────────────────────────
+var mgrFinCurrentPkg = null;
+
+function openManagerFinalize(pkgId) {
+  var pkg = (allData || []).find(function(p) { return p['PKG_ID'] === pkgId; });
+  if (!pkg) { showToast('Не знайдено посилку', 'error'); return; }
+  mgrFinCurrentPkg = pkg;
+
+  document.getElementById('mgrFinTitle').textContent =
+    (pkg['Номер ТТН'] || pkgId) + ' • ' + (pkg['Піб відправника'] || '—');
+
+  // Meta line: what verifier filled
+  var metaEl = document.getElementById('mgrFinMeta');
+  var scanAuthor = pkg['Скан автор'] || '';
+  var scanDate   = pkg['Дата перевірки'] || pkg['Дата реєстрації скану'] || '';
+  var bits = [];
+  if (scanAuthor) bits.push('👤 <b>' + scanAuthor + '</b>');
+  if (scanDate)   bits.push('🕒 ' + scanDate);
+  metaEl.innerHTML = bits.length ? '📷 Перевіряв: ' + bits.join(' · ') : '';
+  metaEl.style.display = bits.length ? 'flex' : 'none';
+
+  // Summary of what verifier filled in
+  var desc = pkg['Опис'] || '';
+  var kg   = pkg['Кг'] || '';
+  var qty  = pkg['Кількість місць'] || '';
+  var photo = pkg['Фото посилки'] || '';
+  var sumRows = [
+    desc  ? '<div><b>📄 Опис:</b> ' + String(desc).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }) + '</div>' : '<div style="color:#dc2626;"><b>📄 Опис:</b> <i>не заповнено</i></div>',
+    qty   ? '<div><b>📦 Позицій:</b> ' + qty + '</div>' : '<div style="color:#dc2626;"><b>📦 Позицій:</b> <i>не заповнено</i></div>',
+    kg    ? '<div><b>⚖️ Вага:</b> ' + kg + ' кг</div>' : '<div style="color:#dc2626;"><b>⚖️ Вага:</b> <i>не заповнено</i></div>',
+    photo ? '<div><b>📷 Фото:</b> <a href="' + photo + '" target="_blank" onclick="event.stopPropagation()">переглянути</a></div>' : '<div style="color:#dc2626;"><b>📷 Фото:</b> <i>не додано</i></div>'
+  ];
+  document.getElementById('mgrFinSummary').innerHTML = sumRows.join('');
+
+  // Pre-fill fields with whatever already exists
+  document.getElementById('mgrFinInner').value   = pkg['Внутрішній №'] || '';
+  document.getElementById('mgrFinPrice').value   = pkg['Ціна'] || '';
+  document.getElementById('mgrFinComment').value = pkg['Коментар менеджера'] || '';
+  document.getElementById('mgrFinError').style.display = 'none';
+  document.getElementById('mgrFinSaveBtn').disabled = false;
+  document.getElementById('mgrFinSaveBtn').textContent = '✅ Готово (фіналізувати)';
+
+  document.getElementById('mgrFinalizeOverlay').classList.add('open');
+  // Focus internal-# if empty, otherwise price
+  setTimeout(function(){
+    var el = document.getElementById(pkg['Внутрішній №'] ? 'mgrFinPrice' : 'mgrFinInner');
+    if (el) el.focus();
+  }, 100);
+}
+
+function closeManagerFinalize() {
+  document.getElementById('mgrFinalizeOverlay').classList.remove('open');
+  mgrFinCurrentPkg = null;
+}
+
+function managerFinalizeSave() {
+  if (!mgrFinCurrentPkg) return;
+  var innerNum = document.getElementById('mgrFinInner').value.trim();
+  var price    = document.getElementById('mgrFinPrice').value.trim().replace(',', '.');
+  var comment  = document.getElementById('mgrFinComment').value.trim();
+  var err = document.getElementById('mgrFinError');
+  err.style.display = 'none';
+
+  if (!innerNum) { err.textContent = 'Вкажіть Внутрішній №'; err.style.display = 'block'; return; }
+  if (!price || isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+    err.textContent = 'Вкажіть Ціну посилки'; err.style.display = 'block'; return;
+  }
+
+  var btn = document.getElementById('mgrFinSaveBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Зберігаю...';
+
+  apiPost('finalizeByManager', {
+    pkg_id: mgrFinCurrentPkg['PKG_ID'],
+    'внутрішній_номер': innerNum,
+    'ціна': price,
+    'коментар_менеджера': comment
+  }).then(function(res) {
+    if (res && res.ok) {
+      showToast('✅ Посилка готова', 'success');
+      closeManagerFinalize();
+      if (typeof loadData === 'function') loadData();
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✅ Готово (фіналізувати)';
+      err.textContent = (res && res.error) || 'Помилка збереження';
+      err.style.display = 'block';
+    }
+  });
+}
+
+// Quick-finalize when both fields already set (button in card strip)
+function finalizeReadyPackage(pkgId) {
+  var pkg = (allData || []).find(function(p) { return p['PKG_ID'] === pkgId; });
+  if (!pkg) return;
+  if (!pkg['Внутрішній №'] || !pkg['Ціна']) {
+    openManagerFinalize(pkgId);
+    return;
+  }
+  if (!confirm('Фіналізувати посилку ' + (pkg['Номер ТТН'] || pkgId) + '?')) return;
+  apiPost('finalizeByManager', {
+    pkg_id: pkgId,
+    'внутрішній_номер': pkg['Внутрішній №'],
+    'ціна': pkg['Ціна']
+  }).then(function(res) {
+    if (res && res.ok) {
+      showToast('✅ Посилка готова', 'success');
+      if (typeof loadData === 'function') loadData();
+    } else {
+      showToast((res && res.error) || 'Помилка', 'error');
+    }
+  });
 }
 
 function closeVerificationForm() {
@@ -8870,7 +9070,6 @@ function verifSave() {
   var npSum   = parseFloat(document.getElementById('verifNpSum').value) || 0;
   var npDebt  = parseFloat(document.getElementById('verifNpDebt').value) || 0;
 
-  var innerNum = (document.getElementById('verifInnerNum') || {}).value || '';
   apiPost('completeVerification', {
     pkg_id: verifCurrentPkg['PKG_ID'],
     'опис': опис,
@@ -8882,11 +9081,10 @@ function verifSave() {
     'нп_платник': npPayer,
     'нп_сума': npSum,
     'нп_борг': npDebt,
-    'скан_автор': getCurrentOperator(),
-    'внутрішній_номер': innerNum
+    'скан_автор': getCurrentOperator()
   }).then(function(res){
     if (res && res.ok) {
-      showToast('✅ Перевірка завершена' + (qtyTot > 1 ? ' (' + qtyCur + '/' + qtyTot + ')' : ''), 'success');
+      showToast('✅ На провірці · чекає менеджера' + (qtyTot > 1 ? ' (' + qtyCur + '/' + qtyTot + ')' : ''), 'success');
       // Оновлюємо запис у історії сканування (якщо саме зі сканера відкривали)
       var ttnVal = (verifCurrentPkg && verifCurrentPkg['Номер ТТН']) || '';
       if (ttnVal) {

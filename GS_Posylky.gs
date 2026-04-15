@@ -149,6 +149,7 @@ function doPost(e) {
       case 'findDuplicatesByRecipient': result = apiFindDuplicatesByRecipient(body); break;
       case 'assignRouteNumber':       result = apiAssignRouteNumber(body); break;
       case 'completeVerification':    result = apiCompleteVerification(body); break;
+      case 'finalizeByManager':       result = apiFinalizeByManager(body); break;
       case 'rejectVerification':      result = apiRejectVerification(body); break;
 
       // ── ROUTES ──
@@ -1162,11 +1163,12 @@ function apiAssignRouteNumber(params) {
 }
 
 /**
- * apiCompleteVerification — завершити перевірку посилки
- * params: { pkg_id, опис, вага, коментар, фото }
+ * apiCompleteVerification — перевіряючий завершив свою частину
+ * params: { pkg_id, опис, вага, коментар, фото, місць_всього, ... }
  *
- * Зберігає дані перевірки (Опис, Кг, Примітка, Фото посилки)
- * та міняє Статус посилки → "Готово"
+ * Зберігає дані перевірки (Опис, Кг, Примітка, Фото посилки, Кількість місць)
+ * та міняє Статус посилки → "На провірці" (чекає менеджера для фінального
+ * заповнення Внутрішній № + Ціна).
  */
 function apiCompleteVerification(params) {
   var found = findPkgInBoth(params.pkg_id);
@@ -1185,11 +1187,59 @@ function apiCompleteVerification(params) {
   if (params['нп_сума']    !== undefined) updates['НП сума грн'] = String(params['нп_сума']);
   if (params['нп_борг']    !== undefined) updates['НП борг грн'] = String(params['нп_борг']);
   if (params['скан_автор'] !== undefined) updates['Скан автор'] = String(params['скан_автор']);
-  if (params['внутрішній_номер'] !== undefined) updates['Внутрішній №'] = String(params['внутрішній_номер']);
+
+  // Перевіряючий закінчив свою роботу → статус "На провірці"
+  // (чекає менеджера для фінального заповнення Внутрішній № + Ціна)
+  updates['Статус посилки'] = 'На провірці';
+  updates['Контроль перевірки'] = 'Чекає менеджера';
+  updates['Дата перевірки'] = now();
+
+  for (var col in updates) {
+    var idx = found.headers.indexOf(col);
+    if (idx !== -1) {
+      found.sheet.getRange(found.rowNum, idx + 1).setValue(updates[col]);
+    }
+  }
+
+  return { ok: true, pkg_id: params.pkg_id, updates: updates };
+}
+
+/**
+ * apiFinalizeByManager — менеджер дозаповнює Внутрішній № + Ціну і фіналізує
+ * params: { pkg_id, внутрішній_номер, ціна, коментар_менеджера }
+ *
+ * Статус посилки: На провірці → Готово
+ */
+function apiFinalizeByManager(params) {
+  var found = findPkgInBoth(params.pkg_id);
+  if (!found) return { ok: false, error: 'Посилку не знайдено' };
+
+  var updates = {};
+  if (params['внутрішній_номер'] !== undefined && params['внутрішній_номер'] !== '') {
+    updates['Внутрішній №'] = String(params['внутрішній_номер']);
+  }
+  if (params['ціна'] !== undefined && params['ціна'] !== '') {
+    updates['Ціна'] = String(params['ціна']);
+  }
+  if (params['коментар_менеджера'] !== undefined) {
+    updates['Коментар менеджера'] = String(params['коментар_менеджера']);
+  }
+
+  // Перевірка повноти
+  var curInner = '';
+  var curPrice = '';
+  var iInner = found.headers.indexOf('Внутрішній №');
+  var iPrice = found.headers.indexOf('Ціна');
+  if (iInner !== -1) curInner = String(found.data[iInner] || '').trim();
+  if (iPrice !== -1) curPrice = String(found.data[iPrice] || '').trim();
+  var finalInner = updates['Внутрішній №'] || curInner;
+  var finalPrice = updates['Ціна'] || curPrice;
+  if (!finalInner) return { ok: false, error: 'Вкажіть Внутрішній №' };
+  if (!finalPrice) return { ok: false, error: 'Вкажіть Ціну' };
 
   updates['Статус посилки'] = 'Готово';
   updates['Контроль перевірки'] = 'Готова до маршруту';
-  updates['Дата перевірки'] = now();
+  updates['Дата фіналізації'] = now();
 
   for (var col in updates) {
     var idx = found.headers.indexOf(col);
