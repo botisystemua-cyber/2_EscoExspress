@@ -145,6 +145,7 @@ function doPost(e) {
 
       // ── VERIFICATION ──
       case 'scanTTN':                 result = apiScanTTN(body); break;
+      case 'saveSimpleScan':          result = apiSaveSimpleScan(body); break;
       case 'findDuplicatesByRecipient': result = apiFindDuplicatesByRecipient(body); break;
       case 'assignRouteNumber':       result = apiAssignRouteNumber(body); break;
       case 'completeVerification':    result = apiCompleteVerification(body); break;
@@ -1147,6 +1148,10 @@ function apiCompleteVerification(params) {
   // Кількість місць (всього під цей ТТН) + поточне місце (яку коробку саме перевіряли)
   if (params['місць_всього']  !== undefined) updates['Кількість місць'] = String(params['місць_всього']);
   if (params['місце_поточне'] !== undefined) updates['Поточне місце'] = String(params['місце_поточне']);
+  // Нова Пошта (вхідна): хто платив + сума грн + борг (якщо платили ми)
+  if (params['нп_платник'] !== undefined) updates['НП платник'] = String(params['нп_платник']);
+  if (params['нп_сума']    !== undefined) updates['НП сума грн'] = String(params['нп_сума']);
+  if (params['нп_борг']    !== undefined) updates['НП борг грн'] = String(params['нп_борг']);
 
   updates['Статус посилки'] = 'Готово';
   updates['Контроль перевірки'] = 'Готова до маршруту';
@@ -1160,6 +1165,41 @@ function apiCompleteVerification(params) {
   }
 
   return { ok: true, pkg_id: params.pkg_id, updates: updates };
+}
+
+/**
+ * apiSaveSimpleScan — легка реєстрація без повної перевірки
+ * params: { pkg_id?, ttn?, місць_всього, нп_платник, нп_сума, нп_борг }
+ *
+ * Зберігає тільки кількість місць + інформацію про оплату Нової Пошти.
+ * Не змінює «Статус посилки» (лишається Оформлення) — повна перевірка
+ * (з фото/вагою/описом) може зробитись пізніше через completeVerification.
+ */
+function apiSaveSimpleScan(params) {
+  var found = null;
+  if (params.pkg_id) found = findPkgInBoth(params.pkg_id);
+  if (!found && params.ttn) {
+    var sheetUe = getUeSheet();
+    found = findRow(sheetUe, 'Номер ТТН', String(params.ttn).trim());
+    if (found) found.sheet = sheetUe;
+  }
+  if (!found) return { ok: false, error: 'Посилку не знайдено' };
+
+  var updates = {};
+  if (params['місць_всього'] !== undefined) updates['Кількість місць'] = String(params['місць_всього']);
+  if (params['нп_платник']   !== undefined) updates['НП платник']     = String(params['нп_платник']);
+  if (params['нп_сума']      !== undefined) updates['НП сума грн']    = String(params['нп_сума']);
+  if (params['нп_борг']      !== undefined) updates['НП борг грн']    = String(params['нп_борг']);
+  updates['Дата реєстрації скану'] = now();
+
+  for (var col in updates) {
+    var idx = found.headers.indexOf(col);
+    if (idx !== -1) {
+      found.sheet.getRange(found.rowNum, idx + 1).setValue(updates[col]);
+    }
+  }
+
+  return { ok: true, pkg_id: params.pkg_id || (found.data[found.headers.indexOf('PKG_ID')] || ''), updates: updates };
 }
 
 /**

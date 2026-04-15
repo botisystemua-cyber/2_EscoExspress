@@ -6699,6 +6699,226 @@ async function applyTag() {
   color: #fff; font-family: inherit; font-size: 13px; font-weight: 700;
   cursor: pointer;
 }
+
+/* ===== Mode toggle (Scan vs Verify) ===== */
+.ttn-mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 10px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  flex: 1;
+  max-width: 260px;
+  margin: 0 8px;
+}
+.ttn-mode-btn {
+  flex: 1;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255,255,255,0.7);
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.ttn-mode-btn.active {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(16,185,129,0.4);
+}
+.ttn-mode-btn[data-mode="verify"].active {
+  background: #3b82f6;
+  box-shadow: 0 2px 6px rgba(59,130,246,0.4);
+}
+
+/* ===== Full scan history panel (expands on counter tap) ===== */
+.ttn-history-panel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 58px);
+  left: 12px; right: 12px;
+  max-height: 70vh;
+  z-index: 15;
+  background: rgba(15,23,42,0.96);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  display: none;
+  flex-direction: column;
+}
+.ttn-history-panel.open { display: flex; }
+.ttn-history-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: #fff; font-size: 14px; font-weight: 700;
+}
+.ttn-history-panel-close {
+  background: rgba(255,255,255,0.1);
+  border: none; color: #fff;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  font-size: 14px; cursor: pointer;
+}
+.ttn-history-panel-list {
+  flex: 1; overflow-y: auto;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ttn-history-panel-list .empty {
+  padding: 20px; text-align: center;
+  color: rgba(255,255,255,0.5); font-size: 13px;
+}
+.ttn-hp-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #fff; font-size: 12px;
+}
+.ttn-hp-item .icon { font-size: 16px; flex-shrink: 0; }
+.ttn-hp-item .code { font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ttn-hp-item .meta { font-size: 10px; color: rgba(255,255,255,0.6); }
+.ttn-hp-item .np { background: #f59e0b; color: #fff; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+
+/* ===== Simple scan sheet (bottom modal for scan mode) ===== */
+.ttn-simple-sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 16;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.3);
+  transform: translateY(100%);
+  transition: transform 0.25s ease-out;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ttn-simple-sheet.open { transform: translateY(0); }
+.ttn-simple-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.ttn-simple-title { font-size: 16px; font-weight: 800; color: #1f2937; }
+.ttn-simple-close {
+  background: #f3f4f6;
+  border: none;
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  font-size: 15px; cursor: pointer;
+}
+.ttn-simple-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.ttn-simple-ttn {
+  font-family: "SF Mono", Monaco, monospace;
+  font-size: 16px; font-weight: 800;
+  color: #1f2937;
+  background: #f3f4f6;
+  padding: 8px 12px;
+  border-radius: 8px;
+  word-break: break-all;
+}
+.ttn-simple-sender {
+  font-size: 13px; color: #6b7280;
+  margin-top: -8px;
+}
+.ttn-simple-field { display: flex; flex-direction: column; gap: 8px; }
+.ttn-simple-label {
+  font-size: 12px; font-weight: 700;
+  color: #374151;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.ttn-simple-label-sm {
+  font-size: 11px; font-weight: 600;
+  color: #6b7280;
+}
+.ttn-simple-qty-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.ttn-simple-qty-btn {
+  width: 44px; height: 44px;
+  background: #f3f4f6; border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 22px; font-weight: 800;
+  cursor: pointer; flex-shrink: 0;
+}
+.ttn-simple-qty-btn:hover { background: #e5e7eb; }
+.ttn-simple-qty-input {
+  flex: 1;
+  height: 44px;
+  text-align: center;
+  font-size: 18px; font-weight: 800;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-family: inherit;
+  outline: none;
+}
+.ttn-simple-qty-input:focus { border-color: #3b82f6; }
+.ttn-simple-np-toggle {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.ttn-simple-np-btn {
+  padding: 12px 8px;
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 12px; font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.3;
+}
+.ttn-simple-np-btn.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+.ttn-simple-np-btn[data-np="us"].active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+.ttn-simple-np-sum {
+  margin-top: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ttn-simple-hint {
+  font-size: 11px; color: #6b7280;
+  font-style: italic;
+}
+.ttn-simple-save {
+  margin-top: 6px;
+  width: 100%;
+  padding: 14px;
+  background: #10b981;
+  border: none; border-radius: 12px;
+  color: #fff;
+  font-family: inherit; font-size: 15px; font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+.ttn-simple-save:disabled { opacity: 0.6; cursor: not-allowed; }
+.ttn-simple-error {
+  padding: 8px 12px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.ttn-scan-counter { cursor: pointer; user-select: none; }
+.ttn-scan-counter:active { transform: scale(0.95); }
 </style>
 
 <div class="ttn-scan-overlay" id="ttnScanOverlay">
@@ -6719,12 +6939,61 @@ async function applyTag() {
 
   <div class="ttn-scan-topbar">
     <button class="ttn-scan-close" onclick="closeScanner()">✕</button>
-    <div class="ttn-scan-title">Сканер ТТН</div>
-    <div class="ttn-scan-counter" id="ttnCounter">📊 0</div>
+    <div class="ttn-mode-toggle" id="ttnModeToggle">
+      <button type="button" class="ttn-mode-btn" data-mode="scan" onclick="ttnSetMode('scan')">📷 Сканувати</button>
+      <button type="button" class="ttn-mode-btn" data-mode="verify" onclick="ttnSetMode('verify')">🔍 Перевіряти</button>
+    </div>
+    <div class="ttn-scan-counter" id="ttnCounter" onclick="ttnToggleHistoryPanel()" title="Список сканованих">📊 0</div>
   </div>
 
   <!-- Історія сканованих посилок з кількістю місць -->
   <div class="ttn-scan-history" id="ttnScanHistory"></div>
+
+  <!-- Повний список сканованих (розгортається по кліку на лічильник) -->
+  <div class="ttn-history-panel" id="ttnHistoryPanel">
+    <div class="ttn-history-panel-head">
+      <span>📊 Сесія сканування</span>
+      <button type="button" class="ttn-history-panel-close" onclick="ttnToggleHistoryPanel()">✕</button>
+    </div>
+    <div class="ttn-history-panel-list" id="ttnHistoryPanelList"></div>
+  </div>
+
+  <!-- Легкий аркуш для режиму «Сканувати»: НП оплата + місця -->
+  <div class="ttn-simple-sheet" id="ttnSimpleSheet">
+    <div class="ttn-simple-head">
+      <div class="ttn-simple-title">📦 Реєстрація ТТН</div>
+      <button type="button" class="ttn-simple-close" onclick="ttnSimpleClose()">✕</button>
+    </div>
+    <div class="ttn-simple-body">
+      <div class="ttn-simple-ttn" id="ttnSimpleTtn">—</div>
+      <div class="ttn-simple-sender" id="ttnSimpleSender">—</div>
+
+      <div class="ttn-simple-field">
+        <label class="ttn-simple-label">📦 Місць під цей ТТН</label>
+        <div class="ttn-simple-qty-row">
+          <button type="button" class="ttn-simple-qty-btn" onclick="ttnSimpleAdjQty(-1)">−</button>
+          <input type="number" min="1" max="99" class="ttn-simple-qty-input" id="ttnSimpleQty" value="1" inputmode="numeric">
+          <button type="button" class="ttn-simple-qty-btn" onclick="ttnSimpleAdjQty(1)">+</button>
+        </div>
+      </div>
+
+      <div class="ttn-simple-field">
+        <label class="ttn-simple-label">💳 Оплата Нової Пошти</label>
+        <div class="ttn-simple-np-toggle">
+          <button type="button" class="ttn-simple-np-btn active" data-np="sender" onclick="ttnSimpleSetPayer('sender')">Відправник заплатив</button>
+          <button type="button" class="ttn-simple-np-btn" data-np="us" onclick="ttnSimpleSetPayer('us')">Ми платимо → у борг</button>
+        </div>
+        <div class="ttn-simple-np-sum" id="ttnSimpleNpSumWrap" style="display:none;">
+          <label class="ttn-simple-label-sm">Сума НП, грн</label>
+          <input type="number" step="1" min="0" class="ttn-simple-qty-input" id="ttnSimpleNpSum" placeholder="напр. 150" inputmode="numeric">
+          <div class="ttn-simple-hint">↗ Цю суму буде додано у борг відправника. Під час перевірки врахується в підсумку.</div>
+        </div>
+      </div>
+
+      <button type="button" class="ttn-simple-save" id="ttnSimpleSaveBtn" onclick="ttnSimpleSave()">✅ Зберегти й далі</button>
+      <div class="ttn-simple-error" id="ttnSimpleError" style="display:none;"></div>
+    </div>
+  </div>
 
   <!-- Квадрат кількості місць (справа-знизу) -->
   <div class="ttn-qty-square" id="ttnQtySquare" onclick="ttnQtyToggle()">
@@ -6902,6 +7171,21 @@ async function applyTag() {
   box-shadow: 0 4px 12px rgba(16,185,129,0.3);
 }
 .verif-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.verif-np-info {
+  padding: 10px 12px;
+  background: #fef3c7; border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 13px; color: #78350f;
+  display: flex; align-items: center; gap: 10px;
+  justify-content: space-between;
+}
+.verif-np-info.free { background: #d1fae5; border-color: #a7f3d0; color: #065f46; }
+.verif-np-info .sum { font-weight: 800; font-size: 15px; }
+.verif-np-info .payer-badge {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(255,255,255,0.7);
+}
 
 /* ===== DESCRIPTION CATEGORY PICKER ===== */
 .desc-picker { margin-top: 6px; }
@@ -7076,6 +7360,15 @@ async function applyTag() {
       <input type="hidden" id="verifQtyTotal" value="1">
       <input type="hidden" id="verifQty" value="1">
 
+      <!-- Нова Пошта (вхідна) — інформація зі скану -->
+      <div id="verifNpBlock" style="display:none;">
+        <label class="verif-field-label">💳 Нова Пошта (вхідна)</label>
+        <div id="verifNpInfo" class="verif-np-info"></div>
+        <input type="hidden" id="verifNpPayer" value="">
+        <input type="hidden" id="verifNpSum" value="0">
+        <input type="hidden" id="verifNpDebt" value="0">
+      </div>
+
       <!-- Коментар -->
       <div>
         <label class="verif-field-label">💬 Коментар</label>
@@ -7169,6 +7462,170 @@ function ttnQtyPulse() {
   sq.classList.add('pulse');
 }
 
+// ===== Режим сканера: 'scan' (проста реєстрація) або 'verify' (повна перевірка) =====
+var TTN_MODE_KEY = 'esco_ttn_mode_v1';
+var ttnMode = 'scan';
+try {
+  var savedMode = localStorage.getItem(TTN_MODE_KEY);
+  if (savedMode === 'scan' || savedMode === 'verify') ttnMode = savedMode;
+} catch (e) {}
+
+function ttnSetMode(m) {
+  if (m !== 'scan' && m !== 'verify') return;
+  ttnMode = m;
+  try { localStorage.setItem(TTN_MODE_KEY, m); } catch (e) {}
+  ttnUpdateModeUI();
+}
+function ttnUpdateModeUI() {
+  document.querySelectorAll('#ttnModeToggle .ttn-mode-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-mode') === ttnMode);
+  });
+}
+
+// ===== Повний список сканованих (розгортається по кліку на 📊) =====
+function ttnToggleHistoryPanel() {
+  var p = document.getElementById('ttnHistoryPanel');
+  if (!p) return;
+  if (p.classList.contains('open')) {
+    p.classList.remove('open');
+  } else {
+    ttnRenderHistoryPanel();
+    p.classList.add('open');
+  }
+}
+function ttnRenderHistoryPanel() {
+  var list = document.getElementById('ttnHistoryPanelList');
+  if (!list) return;
+  if (!ttnScanHistory.length) {
+    list.innerHTML = '<div class="empty">Ще нічого не відскановано в цій сесії</div>';
+    return;
+  }
+  var items = ttnScanHistory.slice().reverse();
+  list.innerHTML = items.map(function(it){
+    var qtyTxt = (it.qtyTot && it.qtyTot > 1) ? (it.qtyCur || 1) + '/' + it.qtyTot : '1';
+    var npBadge = (it.npSum && Number(it.npSum) > 0)
+      ? '<span class="np">НП ' + Number(it.npSum) + '₴</span>' : '';
+    var metaTxt = (it.sender ? it.sender : '') + (it.metaTxt ? ' · ' + it.metaTxt : '');
+    return '<div class="ttn-hp-item">' +
+      '<span class="icon">' + (it.icon || '·') + '</span>' +
+      '<div style="flex:1;overflow:hidden;">' +
+        '<div class="code">' + String(it.ttn || '—') + '</div>' +
+        (metaTxt ? '<div class="meta">' + escHtml(metaTxt) + '</div>' : '') +
+      '</div>' +
+      '<span class="qty" style="background:#f59e0b;color:#fff;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:700;">' + qtyTxt + '</span>' +
+      npBadge +
+      '</div>';
+  }).join('');
+}
+
+// ===== Легкий аркуш для режиму «Сканувати» — НП оплата + місця =====
+var ttnSimpleCurrent = null; // pkgObj останнього скану
+var ttnSimplePayer = 'sender'; // 'sender' | 'us'
+
+function ttnSimpleOpen(pkgObj, decodedTtn) {
+  ttnSimpleCurrent = pkgObj || { 'Номер ТТН': decodedTtn };
+  var ttn = (pkgObj && (pkgObj['Номер ТТН'] || pkgObj.ttn)) || decodedTtn || '—';
+  var sender = (pkgObj && (pkgObj['Піб відправника'] || pkgObj['Відправник'])) || '';
+  document.getElementById('ttnSimpleTtn').textContent = ttn;
+  document.getElementById('ttnSimpleSender').textContent = sender ? '👤 ' + sender : '—';
+
+  // Кількість місць — беремо з квадратика
+  document.getElementById('ttnSimpleQty').value = ttnQtyValue || 1;
+
+  // Дефолт оплати — відправник
+  ttnSimplePayer = 'sender';
+  ttnSimpleUpdatePayerUI();
+  document.getElementById('ttnSimpleNpSum').value = '';
+  document.getElementById('ttnSimpleError').style.display = 'none';
+  document.getElementById('ttnSimpleSaveBtn').disabled = false;
+  document.getElementById('ttnSimpleSaveBtn').textContent = '✅ Зберегти й далі';
+
+  document.getElementById('ttnSimpleSheet').classList.add('open');
+}
+function ttnSimpleClose() {
+  document.getElementById('ttnSimpleSheet').classList.remove('open');
+  ttnSimpleCurrent = null;
+}
+function ttnSimpleAdjQty(delta) {
+  var i = document.getElementById('ttnSimpleQty');
+  var v = Math.max(1, Math.min(99, (parseInt(i.value, 10) || 1) + delta));
+  i.value = v;
+  ttnQtyValue = v;
+  ttnQtyUpdateUI();
+}
+function ttnSimpleSetPayer(p) {
+  ttnSimplePayer = (p === 'us') ? 'us' : 'sender';
+  ttnSimpleUpdatePayerUI();
+}
+function ttnSimpleUpdatePayerUI() {
+  document.querySelectorAll('.ttn-simple-np-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-np') === (ttnSimplePayer === 'us' ? 'us' : 'sender'));
+  });
+  document.getElementById('ttnSimpleNpSumWrap').style.display = (ttnSimplePayer === 'us') ? 'flex' : 'none';
+}
+function ttnSimpleSave() {
+  var pkg = ttnSimpleCurrent;
+  if (!pkg) return;
+  var pkgId = pkg['PKG_ID'] || pkg.pkg_id || '';
+  var ttn = pkg['Номер ТТН'] || pkg.ttn || '';
+  var qty = parseInt(document.getElementById('ttnSimpleQty').value, 10) || 1;
+  var payer = (ttnSimplePayer === 'us') ? 'Ми' : 'Відправник';
+  var npSum = 0;
+  if (ttnSimplePayer === 'us') {
+    npSum = parseFloat(document.getElementById('ttnSimpleNpSum').value) || 0;
+    if (npSum <= 0) {
+      var er = document.getElementById('ttnSimpleError');
+      er.textContent = 'Вкажи суму НП (грн), бо обрано «Ми платимо».';
+      er.style.display = 'block';
+      return;
+    }
+  }
+
+  var btn = document.getElementById('ttnSimpleSaveBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Зберігаю...';
+
+  var payload = {
+    action: 'saveSimpleScan',
+    pkg_id: pkgId,
+    ttn: ttn,
+    місць_всього: qty,
+    нп_платник: payer,
+    нп_сума: npSum,
+    нп_борг: (payer === 'Ми') ? npSum : 0
+  };
+
+  fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){
+    if (res && res.ok) {
+      // Оновити історію цього ТТН додатково з NP-сумою
+      ttnUpsertScanHistory(ttn, { qtyTot: qty, qtyCur: 1, npSum: npSum, npPayer: payer });
+      ttnDataChanged = true;
+      ttnSimpleClose();
+      // Продовжити сканування
+      if (ttnIsScanning) ttnResumeScan();
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✅ Зберегти й далі';
+      var er = document.getElementById('ttnSimpleError');
+      er.textContent = (res && res.error) || 'Помилка збереження';
+      er.style.display = 'block';
+    }
+  })
+  .catch(function(err){
+    btn.disabled = false;
+    btn.textContent = '✅ Зберегти й далі';
+    var er = document.getElementById('ttnSimpleError');
+    er.textContent = 'Немає зв\'язку: ' + (err.message || err);
+    er.style.display = 'block';
+  });
+}
+
 // Історія сканування в поточній сесії (відображається на оверлеї сканера)
 // Елемент: { ttn, icon, status, qtyTot, qtyCur }
 var ttnScanHistory = [];
@@ -7226,6 +7683,13 @@ function openScanner() {
   ttnQtyValue = 1;
   ttnQtyUpdateUI();
   document.getElementById('ttnQtyPopup').classList.remove('open');
+  // Mode toggle UI
+  ttnUpdateModeUI();
+  // Закрити всі модалки сканера
+  var sheet = document.getElementById('ttnSimpleSheet');
+  if (sheet) sheet.classList.remove('open');
+  var hp = document.getElementById('ttnHistoryPanel');
+  if (hp) hp.classList.remove('open');
 }
 
 function closeScanner() {
@@ -7331,30 +7795,38 @@ function ttnOnScanSuccess(decodedText) {
 function ttnHandleResult(ttn, res) {
   var variant = 'error', icon = '❌', label = 'Помилка', statusTxt = '';
 
-  if (res && res.ok) {
-    if (res.action === 'updated') {
-      variant = 'success'; icon = '✅'; label = 'Оформлено';
-      statusTxt = (res.data && res.data['Піб відправника']) || '';
-      ttnDataChanged = true;
-    } else if (res.action === 'start_verify') {
-      // Верифікатор сканував — одразу відкриваємо форму перевірки
-      variant = 'success'; icon = '🔍'; label = 'Перевірка';
-      statusTxt = (res.data && res.data['Піб відправника']) || '';
-      ttnDataChanged = true;
-      ttnScanCount++;
-      document.getElementById('ttnCounter').textContent = '📊 ' + ttnScanCount;
-      ttnUpsertScanHistory(ttn, {
-        icon: '🔍',
-        qtyTot: parseInt((res.data && res.data['Кількість місць']) || '1', 10) || 1,
-        qtyCur: parseInt((res.data && res.data['Поточне місце']) || '1', 10) || 1
-      });
-      ttnShowToast({ variant: variant, icon: icon, label: label, value: ttn, status: statusTxt });
-      setTimeout(function(){
-        document.getElementById('ttnToast').classList.remove('show');
+  // Спеціальні гілки: scan-mode для updated/start_verify, verify-mode для start_verify
+  if (res && res.ok && (res.action === 'updated' || res.action === 'start_verify')) {
+    var isVerify = (ttnMode === 'verify' && res.action === 'start_verify');
+    variant = 'success';
+    icon = isVerify ? '🔍' : '📷';
+    label = isVerify ? 'Перевірка' : 'Реєстрація';
+    statusTxt = (res.data && res.data['Піб відправника']) || '';
+    ttnDataChanged = true;
+    ttnScanCount++;
+    document.getElementById('ttnCounter').textContent = '📊 ' + ttnScanCount;
+    ttnUpsertScanHistory(ttn, {
+      icon: icon,
+      sender: statusTxt,
+      qtyTot: parseInt((res.data && res.data['Кількість місць']) || '1', 10) || 1,
+      qtyCur: parseInt((res.data && res.data['Поточне місце']) || '1', 10) || 1
+    });
+    ttnShowToast({ variant: variant, icon: icon, label: label, value: ttn, status: statusTxt });
+    setTimeout(function(){
+      document.getElementById('ttnToast').classList.remove('show');
+      if (isVerify) {
         if (res.data) openVerificationForm(res.data);
-      }, 700);
-      return;
-    } else if (res.action === 'already') {
+      } else {
+        // Режим «Сканувати» — легкий аркуш з НП оплатою + кількістю
+        ttnSimpleOpen(res.data || {}, ttn);
+      }
+    }, 500);
+    return;
+  }
+
+  // Інші випадки — звичайний toast
+  if (res && res.ok) {
+    if (res.action === 'already') {
       variant = 'already'; icon = 'ℹ️'; label = res.message || 'Вже оброблено';
       statusTxt = 'Статус: ' + (res.status || '—');
     } else if (res.action === 'warn') {
@@ -7950,6 +8422,32 @@ function openVerificationForm(pkgObj) {
   document.getElementById('verifQtyTotal').value = qTot;
   document.getElementById('verifQty').value = qCur;
 
+  // НП оплата — якщо записано під час простого скану, показати read-only
+  var npPayer = String(pkgObj['НП платник'] || '').trim();
+  var npSum = parseFloat(pkgObj['НП сума грн'] || pkgObj['НП сума'] || '0') || 0;
+  var npDebt = parseFloat(pkgObj['НП борг грн'] || pkgObj['НП борг'] || '0') || 0;
+  var npBlock = document.getElementById('verifNpBlock');
+  var npInfo = document.getElementById('verifNpInfo');
+  if (npPayer) {
+    npBlock.style.display = 'block';
+    document.getElementById('verifNpPayer').value = npPayer;
+    document.getElementById('verifNpSum').value = npSum;
+    document.getElementById('verifNpDebt').value = npDebt;
+    if (npPayer === 'Ми' || npDebt > 0) {
+      npInfo.className = 'verif-np-info';
+      npInfo.innerHTML =
+        '<div><span class="payer-badge">Платили ми</span> <span style="margin-left:8px;">🔻 у борг</span></div>' +
+        '<span class="sum">' + (npSum || npDebt) + ' ₴</span>';
+    } else {
+      npInfo.className = 'verif-np-info free';
+      npInfo.innerHTML =
+        '<div><span class="payer-badge">Відправник</span> <span style="margin-left:8px;">✓ оплачено</span></div>' +
+        '<span class="sum">0 ₴</span>';
+    }
+  } else {
+    npBlock.style.display = 'none';
+  }
+
   var preview = document.getElementById('verifPhotoPreview');
   var placeholder = document.getElementById('verifPhotoPlaceholder');
   if (verifCurrentPhotoUrl) {
@@ -8073,6 +8571,11 @@ function verifSave() {
   // Запамʼятати опис у локальну базу для автокомпліту
   try { saveCustomDescription(опис); } catch (e) {}
 
+  // НП оплата — передаємо якщо зафіксовано ще на етапі простого скану
+  var npPayer = document.getElementById('verifNpPayer').value || '';
+  var npSum   = parseFloat(document.getElementById('verifNpSum').value) || 0;
+  var npDebt  = parseFloat(document.getElementById('verifNpDebt').value) || 0;
+
   apiPost('completeVerification', {
     pkg_id: verifCurrentPkg['PKG_ID'],
     'опис': опис,
@@ -8080,7 +8583,10 @@ function verifSave() {
     'коментар': коментар,
     'фото': verifCurrentPhotoUrl,
     'місць_всього': qtyTot,
-    'місце_поточне': qtyCur
+    'місце_поточне': qtyCur,
+    'нп_платник': npPayer,
+    'нп_сума': npSum,
+    'нп_борг': npDebt
   }).then(function(res){
     if (res && res.ok) {
       showToast('✅ Перевірка завершена' + (qtyTot > 1 ? ' (' + qtyCur + '/' + qtyTot + ')' : ''), 'success');
