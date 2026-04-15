@@ -10,7 +10,7 @@ var DB = {
   MARHRUT:  '10SZhKV08BJyvWoMwhT0iddtWzYrDYFjCM8xgqViuE3Y',
   KLIYENTU: '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38',
   FINANCE:  '1AhID7Ust45sA4PCAUjWJz515qnxzQGSj5wGQ7K8Jbu0',
-  CONFIG:   '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq5udBE',
+  CONFIG:   '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq3udBE',
   ARCHIVE:  '19Ftljah5eX07RLHJaBrvYV7hStxspxcJVi6VATGZvF0'
 };
 
@@ -1890,3 +1890,4 @@ function testGetVerificationStats() {
   var result = apiGetVerificationStats({});
   Logger.log(JSON.stringify(result, null, 2));
 }
+
