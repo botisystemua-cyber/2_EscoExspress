@@ -533,6 +533,9 @@
                 if (res.action === 'updated') {
                     variant = 'success'; icon = '✅'; label = 'Оформлено';
                     statusTxt = (res.data && res.data['Піб відправника']) || res.message || '';
+                } else if (res.action === 'start_verify') {
+                    variant = 'success'; icon = '🔍'; label = 'Перевірка';
+                    statusTxt = (res.data && res.data['Піб відправника']) || 'Відкрити форму';
                 } else if (res.action === 'already') {
                     variant = 'already'; icon = 'ℹ️'; label = res.message || 'Вже оброблено';
                     statusTxt = 'Статус: ' + (res.status || '—');

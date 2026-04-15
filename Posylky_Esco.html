@@ -6564,6 +6564,195 @@ async function applyTag() {
   </div>
 </div>
 
+<!-- ===== VERIFICATION FORM ===== -->
+<style>
+.verif-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 10000;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+.verif-overlay.open { display: flex; }
+@media (min-width: 640px) {
+  .verif-overlay { align-items: center; }
+}
+.verif-panel {
+  width: 100%; max-width: 520px;
+  max-height: 95vh;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.3);
+}
+@media (min-width: 640px) { .verif-panel { border-radius: 16px; } }
+.verif-header {
+  background: var(--primary);
+  color: #fff;
+  padding: 14px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.verif-header-title { font-size: 14px; font-weight: 700; }
+.verif-header-close {
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,0.2);
+  border: none; border-radius: 50%;
+  color: #fff; font-size: 18px; cursor: pointer;
+}
+.verif-pkg-title {
+  background: #f3f4f6;
+  padding: 10px 16px;
+  font-size: 13px; font-weight: 600;
+  color: #1f2937;
+  border-bottom: 1px solid #e5e7eb;
+  word-break: break-word;
+}
+.verif-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.verif-photo-area {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #f3f4f6;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+.verif-photo-placeholder {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: #6b7280; text-align: center;
+}
+.verif-photo-placeholder-icon { font-size: 42px; margin-bottom: 6px; }
+.verif-photo-placeholder-text { font-size: 13px; font-weight: 600; }
+.verif-photo-placeholder-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.verif-photo-preview {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: none;
+}
+.verif-photo-buttons {
+  display: flex; gap: 8px;
+}
+.verif-photo-btn {
+  flex: 1;
+  padding: 10px;
+  background: #f3f4f6;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.verif-photo-btn:hover { background: #e5e7eb; }
+.verif-photo-status { font-size: 11px; margin-top: 2px; min-height: 14px; }
+.verif-field-label {
+  font-size: 12px; font-weight: 700;
+  color: #374151;
+  margin-bottom: 4px;
+  display: block;
+}
+.verif-input, .verif-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-family: inherit; font-size: 14px;
+  color: #1f2937;
+  background: #fff;
+}
+.verif-input:focus, .verif-textarea:focus {
+  outline: none; border-color: var(--primary);
+}
+.verif-textarea { resize: vertical; min-height: 60px; }
+.verif-error {
+  display: none;
+  background: #fef2f2; border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 13px;
+}
+.verif-footer {
+  padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px);
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+.verif-save-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--success);
+  color: #fff;
+  border: none; border-radius: 12px;
+  font-family: inherit; font-size: 15px; font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+.verif-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>
+
+<div class="verif-overlay" id="verifOverlay">
+  <div class="verif-panel">
+    <div class="verif-header">
+      <div class="verif-header-title">🔍 Перевірка посилки</div>
+      <button class="verif-header-close" onclick="closeVerificationForm()">✕</button>
+    </div>
+    <div class="verif-pkg-title" id="verifPkgTitle">—</div>
+
+    <div class="verif-body">
+      <!-- Photo -->
+      <div>
+        <label class="verif-field-label">📷 Фото посилки <span style="color:var(--danger)">*</span></label>
+        <div class="verif-photo-area" onclick="verifPickPhoto()">
+          <div class="verif-photo-placeholder" id="verifPhotoPlaceholder">
+            <div class="verif-photo-placeholder-icon">📷</div>
+            <div class="verif-photo-placeholder-text">Додати фото</div>
+            <div class="verif-photo-placeholder-sub">Камера або галерея</div>
+          </div>
+          <img class="verif-photo-preview" id="verifPhotoPreview" alt="preview">
+        </div>
+        <input type="file" id="verifFileInput" accept="image/*" capture="environment" onchange="verifOnFileChosen(event)" style="display:none;">
+        <div class="verif-photo-buttons" style="margin-top:8px;">
+          <button class="verif-photo-btn" onclick="verifPickPhoto()">📷 Зняти/Обрати</button>
+          <button class="verif-photo-btn" onclick="verifRetakePhoto()">🔄 Перезняти</button>
+        </div>
+        <div class="verif-photo-status" id="verifPhotoUploadStatus"></div>
+      </div>
+
+      <!-- Опис -->
+      <div>
+        <label class="verif-field-label">📝 Опис посилки <span style="color:var(--danger)">*</span></label>
+        <textarea class="verif-textarea" id="verifDesc" placeholder="Що всередині (одяг, косметика, електроніка...)"></textarea>
+      </div>
+
+      <!-- Вага -->
+      <div>
+        <label class="verif-field-label">⚖️ Вага, кг <span style="color:var(--danger)">*</span></label>
+        <input type="number" step="0.1" min="0" inputmode="decimal" class="verif-input" id="verifWeight" placeholder="напр. 2.3">
+      </div>
+
+      <!-- Коментар -->
+      <div>
+        <label class="verif-field-label">💬 Коментар</label>
+        <textarea class="verif-textarea" id="verifComment" placeholder="Необов'язково"></textarea>
+      </div>
+
+      <div class="verif-error" id="verifError"></div>
+    </div>
+
+    <div class="verif-footer">
+      <button class="verif-save-btn" id="verifSaveBtn" onclick="verifSave()">✅ Готово</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ===== TTN SCANNER (integrated) =====
 var ttnScanner = null;
@@ -6675,6 +6864,19 @@ function ttnHandleResult(ttn, res) {
       variant = 'success'; icon = '✅'; label = 'Оформлено';
       statusTxt = (res.data && res.data['Піб відправника']) || '';
       ttnDataChanged = true;
+    } else if (res.action === 'start_verify') {
+      // Верифікатор сканував — одразу відкриваємо форму перевірки
+      variant = 'success'; icon = '🔍'; label = 'Перевірка';
+      statusTxt = (res.data && res.data['Піб відправника']) || '';
+      ttnDataChanged = true;
+      ttnScanCount++;
+      document.getElementById('ttnCounter').textContent = '📊 ' + ttnScanCount;
+      ttnShowToast({ variant: variant, icon: icon, label: label, value: ttn, status: statusTxt });
+      setTimeout(function(){
+        document.getElementById('ttnToast').classList.remove('show');
+        if (res.data) openVerificationForm(res.data);
+      }, 700);
+      return;
     } else if (res.action === 'already') {
       variant = 'already'; icon = 'ℹ️'; label = res.message || 'Вже оброблено';
       statusTxt = 'Статус: ' + (res.status || '—');
@@ -6726,6 +6928,162 @@ function ttnResumeScan() {
 document.addEventListener('visibilitychange', function(){
   if (document.hidden && ttnIsScanning) ttnStopCamera();
 });
+
+// ===== VERIFICATION FORM =====
+var PHOTO_UPLOAD_URL = 'https://botisystem.com/Esco_Express/photo_upload.php';
+var verifCurrentPkg = null;
+var verifCurrentPhotoUrl = '';
+
+function openVerificationForm(pkgObj) {
+  verifCurrentPkg = pkgObj;
+  verifCurrentPhotoUrl = pkgObj['Фото посилки'] || '';
+
+  document.getElementById('verifPkgTitle').textContent =
+    (pkgObj['Номер ТТН'] || '—') + ' • ' + (pkgObj['Піб відправника'] || '—');
+  document.getElementById('verifDesc').value = pkgObj['Опис'] || '';
+  document.getElementById('verifWeight').value = pkgObj['Кг'] || '';
+  document.getElementById('verifComment').value = pkgObj['Примітка'] || '';
+
+  var preview = document.getElementById('verifPhotoPreview');
+  var placeholder = document.getElementById('verifPhotoPlaceholder');
+  if (verifCurrentPhotoUrl) {
+    preview.src = verifCurrentPhotoUrl;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    preview.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
+
+  document.getElementById('verifError').style.display = 'none';
+  document.getElementById('verifSaveBtn').disabled = false;
+  document.getElementById('verifSaveBtn').textContent = '✅ Готово';
+
+  document.getElementById('verifOverlay').classList.add('open');
+}
+
+function closeVerificationForm() {
+  document.getElementById('verifOverlay').classList.remove('open');
+  verifCurrentPkg = null;
+  verifCurrentPhotoUrl = '';
+  var input = document.getElementById('verifFileInput');
+  if (input) input.value = '';
+}
+
+function verifPickPhoto() {
+  document.getElementById('verifFileInput').click();
+}
+
+function verifOnFileChosen(ev) {
+  var file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+
+  var placeholder = document.getElementById('verifPhotoPlaceholder');
+  var preview = document.getElementById('verifPhotoPreview');
+
+  // Локальний preview
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+
+  // Завантажуємо на хостинг
+  var uploadLabel = document.getElementById('verifPhotoUploadStatus');
+  uploadLabel.textContent = '⏳ Завантажую фото...';
+  uploadLabel.style.color = '#f59e0b';
+  document.getElementById('verifSaveBtn').disabled = true;
+
+  var fd = new FormData();
+  fd.append('file', file);
+  if (verifCurrentPkg && verifCurrentPkg['PKG_ID']) fd.append('pkg_id', verifCurrentPkg['PKG_ID']);
+
+  fetch(PHOTO_UPLOAD_URL, { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res && res.ok && res.url) {
+        verifCurrentPhotoUrl = res.url;
+        uploadLabel.textContent = '✓ Фото завантажено';
+        uploadLabel.style.color = '#10b981';
+        document.getElementById('verifSaveBtn').disabled = false;
+      } else {
+        uploadLabel.textContent = '✗ ' + ((res && res.error) || 'Помилка завантаження');
+        uploadLabel.style.color = '#ef4444';
+        document.getElementById('verifSaveBtn').disabled = false;
+      }
+    })
+    .catch(function(err){
+      uploadLabel.textContent = '✗ ' + (err.message || 'Немає зв\'язку');
+      uploadLabel.style.color = '#ef4444';
+      document.getElementById('verifSaveBtn').disabled = false;
+    });
+}
+
+function verifRetakePhoto() {
+  verifCurrentPhotoUrl = '';
+  document.getElementById('verifPhotoPreview').style.display = 'none';
+  document.getElementById('verifPhotoPlaceholder').style.display = 'flex';
+  document.getElementById('verifPhotoUploadStatus').textContent = '';
+  document.getElementById('verifFileInput').value = '';
+  verifPickPhoto();
+}
+
+function verifSave() {
+  if (!verifCurrentPkg) return;
+  var err = document.getElementById('verifError');
+  err.style.display = 'none';
+
+  var опис = document.getElementById('verifDesc').value.trim();
+  var вага = document.getElementById('verifWeight').value.trim().replace(',', '.');
+  var коментар = document.getElementById('verifComment').value.trim();
+
+  if (!опис) {
+    err.textContent = 'Вкажіть опис посилки';
+    err.style.display = 'block';
+    return;
+  }
+  if (!вага || isNaN(parseFloat(вага)) || parseFloat(вага) <= 0) {
+    err.textContent = 'Вкажіть вагу (кг, дробова)';
+    err.style.display = 'block';
+    return;
+  }
+  if (!verifCurrentPhotoUrl) {
+    err.textContent = 'Додайте фото посилки';
+    err.style.display = 'block';
+    return;
+  }
+
+  var btn = document.getElementById('verifSaveBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Зберігаю...';
+
+  apiPost('completeVerification', {
+    pkg_id: verifCurrentPkg['PKG_ID'],
+    'опис': опис,
+    'вага': вага,
+    'коментар': коментар,
+    'фото': verifCurrentPhotoUrl
+  }).then(function(res){
+    if (res && res.ok) {
+      showToast('✅ Перевірка завершена', 'success');
+      closeVerificationForm();
+      // Після закриття форми якщо сканер ще активний — продовжити, інакше просто оновити дані
+      if (ttnIsScanning) {
+        ttnResumeScan();
+        ttnDataChanged = true;
+      } else if (typeof loadData === 'function') {
+        loadData();
+      }
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✅ Готово';
+      err.textContent = (res && res.error) || 'Помилка збереження';
+      err.style.display = 'block';
+    }
+  });
+}
 </script>
 </body>
 </html>

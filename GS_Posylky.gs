@@ -972,11 +972,20 @@ function apiScanTTN(params) {
       action = 'updated';
       message = 'Статус оновлено: Оформлення';
     } else if (currentStatus === 'Оформлення') {
-      action = 'already';
-      message = 'Вже оформлено';
+      // Другий скан (верифікатором) — перевести на "Провірка" і відкрити форму
+      if (statusIdx !== -1) {
+        sheetUe.getRange(found.rowNum, statusIdx + 1).setValue('Провірка');
+        found.data[statusIdx] = 'Провірка';
+      }
+      action = 'start_verify';
+      message = 'Відкрити форму перевірки';
     } else if (currentStatus === 'Провірка') {
+      // Вже в процесі перевірки — просто відкрити форму
+      action = 'start_verify';
+      message = 'Продовжити перевірку';
+    } else if (currentStatus === 'Готово') {
       action = 'already';
-      message = 'Вже на перевірці';
+      message = 'Вже перевірено (Готово)';
     } else if (currentStatus === 'Доставлено' || currentStatus === 'Повернення') {
       action = 'warn';
       message = 'Посилка вже закрита (' + currentStatus + ')';
@@ -1120,29 +1129,34 @@ function apiAssignRouteNumber(params) {
 }
 
 /**
- * apiCompleteVerification — завершити перевірку
- * params: { pkg_id, skip_validation }
+ * apiCompleteVerification — завершити перевірку посилки
+ * params: { pkg_id, опис, вага, коментар, фото }
+ *
+ * Зберігає дані перевірки (Опис, Кг, Примітка, Фото посилки)
+ * та міняє Статус посилки → "Готово"
  */
 function apiCompleteVerification(params) {
   var found = findPkgInBoth(params.pkg_id);
   if (!found) return { ok: false, error: 'Посилку не знайдено' };
 
-  var obj = rowToObj(found.headers, found.data);
+  var updates = {};
+  if (params['опис']     !== undefined) updates['Опис'] = String(params['опис']);
+  if (params['вага']     !== undefined) updates['Кг'] = String(params['вага']);
+  if (params['коментар'] !== undefined) updates['Примітка'] = String(params['коментар']);
+  if (params['фото']     !== undefined) updates['Фото посилки'] = String(params['фото']);
 
-  // Валідація (якщо не skip)
-  if (!params.skip_validation) {
-    if (!obj['Внутрішній №']) {
-      return { ok: false, error: 'Внутрішній № обов\'язковий для завершення перевірки' };
+  updates['Статус посилки'] = 'Готово';
+  updates['Контроль перевірки'] = 'Готова до маршруту';
+  updates['Дата перевірки'] = now();
+
+  for (var col in updates) {
+    var idx = found.headers.indexOf(col);
+    if (idx !== -1) {
+      found.sheet.getRange(found.rowNum, idx + 1).setValue(updates[col]);
     }
   }
 
-  // Оновити статус
-  var ctrlIdx = found.headers.indexOf('Контроль перевірки');
-  if (ctrlIdx !== -1) {
-    found.sheet.getRange(found.rowNum, ctrlIdx + 1).setValue('Готова до маршруту');
-  }
-
-  return { ok: true, pkg_id: params.pkg_id };
+  return { ok: true, pkg_id: params.pkg_id, updates: updates };
 }
 
 /**
