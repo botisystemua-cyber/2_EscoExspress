@@ -8740,6 +8740,10 @@ function closeVerificationForm() {
   if (input) input.value = '';
   var bar = document.getElementById('verifSessionsBar');
   if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
+  // Resume scanner if user closed form without saving
+  if (typeof ttnIsScanning !== 'undefined' && ttnIsScanning && typeof ttnResumeScan === 'function') {
+    ttnResumeScan();
+  }
 }
 
 function verifPickPhoto() {

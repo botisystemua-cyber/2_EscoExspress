@@ -983,14 +983,25 @@ function apiScanTTN(params) {
     var message = '';
 
     if (currentStatus === '' || currentStatus === 'Зареєстровано') {
-      // Оновити на "Оформлення"
-      if (statusIdx !== -1) {
-        sheetUe.getRange(found.rowNum, statusIdx + 1).setValue('Оформлення');
-        found.data[statusIdx] = 'Оформлення';
+      // Якщо відразу сканують у режимі «Перевіряти» — пропустити етап «Оформлення»
+      // і відкрити форму перевірки. В режимі «Сканувати» — зберегти крок «Оформлення».
+      if (scanMode === 'verify') {
+        if (statusIdx !== -1) {
+          sheetUe.getRange(found.rowNum, statusIdx + 1).setValue('Провірка');
+          found.data[statusIdx] = 'Провірка';
+        }
+        recordScanMeta(found, scanAuthor);
+        action = 'start_verify';
+        message = 'Відкрити форму перевірки';
+      } else {
+        if (statusIdx !== -1) {
+          sheetUe.getRange(found.rowNum, statusIdx + 1).setValue('Оформлення');
+          found.data[statusIdx] = 'Оформлення';
+        }
+        recordScanMeta(found, scanAuthor);
+        action = 'updated';
+        message = 'Статус оновлено: Оформлення';
       }
-      recordScanMeta(found, scanAuthor);
-      action = 'updated';
-      message = 'Статус оновлено: Оформлення';
     } else if (currentStatus === 'Оформлення') {
       // Другий скан (верифікатором) — перевести на "Провірка" і відкрити форму
       if (statusIdx !== -1) {
