@@ -543,8 +543,9 @@
                     variant = 'created'; icon = '🆕'; label = 'Невідома посилку створено';
                     statusTxt = 'Статус: Невідомо';
                 } else {
-                    variant = 'success'; icon = '✅'; label = 'OK';
-                    statusTxt = res.message || '';
+                    // Немає поля action → старий бекенд. Попереджаємо.
+                    variant = 'warn'; icon = '⚠️'; label = 'Застарілий бекенд';
+                    statusTxt = 'Оновіть Apps Script (Deploy → New version)';
                 }
             } else {
                 statusTxt = (res && res.error) || 'Невідома помилка';
