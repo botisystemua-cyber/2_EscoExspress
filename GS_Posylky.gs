@@ -10,7 +10,7 @@ var DB = {
   MARHRUT:  '10SZhKV08BJyvWoMwhT0iddtWzYrDYFjCM8xgqViuE3Y',
   KLIYENTU: '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38',
   FINANCE:  '1AhID7Ust45sA4PCAUjWJz515qnxzQGSj5wGQ7K8Jbu0',
-  CONFIG:   '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq3udBE',
+  CONFIG:   '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq5udBE',
   ARCHIVE:  '19Ftljah5eX07RLHJaBrvYV7hStxspxcJVi6VATGZvF0'
 };
 
@@ -172,6 +172,12 @@ function doPost(e) {
       // ── NOVA POSHTA ──
       case 'trackParcel':             result = apiTrackParcel(body); break;
       case 'checkNpApiKey':           result = apiCheckNpApiKey(body); break;
+
+      // ── CLIENT CHAT ──
+      case 'getClientMessages':       result = apiGetClientMessages(body); break;
+      case 'sendManagerMessage':      result = apiSendManagerMessage(body); break;
+      case 'markClientRead':          result = apiMarkClientRead(body); break;
+      case 'getUnreadCounts':         result = apiGetUnreadCounts(body); break;
 
       default:
         result = { ok: false, error: 'Unknown action: ' + action };
@@ -1804,6 +1810,80 @@ function testScanTTN() {
 function testGetRoutesList() {
   var result = apiGetRoutesList({});
   Logger.log(JSON.stringify(result, null, 2));
+}
+
+// ══════════════════════════════════════════════════════════════
+// ██  CLIENT CHAT (аркуш "Чат" в KLIYENTU)
+// ══════════════════════════════════════════════════════════════
+
+function _getChatSheet() {
+  var ss = SpreadsheetApp.openById(DB.KLIYENTU);
+  var sh = ss.getSheetByName('Чат');
+  if (!sh) {
+    sh = ss.insertSheet('Чат');
+    sh.appendRow(['MESSAGE_ID','CLIENT_ID','Дата і час','Роль','Імʼя відправника','Текст повідомлення','Прочитано','BOOKING_ID','ORDER_ID']);
+  }
+  return sh;
+}
+
+function apiGetClientMessages(body) {
+  var cliId = body.cli_id;
+  if (!cliId) return { ok: false, error: 'cli_id required' };
+  var sh = _getChatSheet();
+  var data = sh.getDataRange().getValues();
+  var messages = [];
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]) === String(cliId)) {
+      messages.push({
+        message_id: data[i][0],
+        cli_id: data[i][1],
+        date: data[i][2],
+        role: data[i][3],
+        sender_name: data[i][4],
+        text: data[i][5],
+        read: data[i][6]
+      });
+    }
+  }
+  messages.sort(function(a,b) { return new Date(a.date) - new Date(b.date); });
+  return { ok: true, data: messages };
+}
+
+function apiSendManagerMessage(body) {
+  var cliId = body.cli_id;
+  var text = body.text;
+  var senderName = body.sender_name || 'Менеджер';
+  if (!cliId || !text) return { ok: false, error: 'cli_id and text required' };
+  var sh = _getChatSheet();
+  var msgId = 'MSG-' + new Date().getTime().toString(36).toUpperCase();
+  sh.appendRow([msgId, cliId, new Date().toISOString(), 'manager', senderName, text, '', '', '']);
+  return { ok: true, data: { message_id: msgId } };
+}
+
+function apiGetUnreadCounts(body) {
+  var sh = _getChatSheet();
+  var data = sh.getDataRange().getValues();
+  var counts = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][3] === 'client' && data[i][6] !== 'Так') {
+      var cid = String(data[i][1]);
+      counts[cid] = (counts[cid] || 0) + 1;
+    }
+  }
+  return { ok: true, data: counts };
+}
+
+function apiMarkClientRead(body) {
+  var cliId = body.cli_id;
+  if (!cliId) return { ok: false, error: 'cli_id required' };
+  var sh = _getChatSheet();
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]) === String(cliId) && data[i][3] === 'client' && data[i][6] !== 'Так') {
+      sh.getRange(i + 1, 7).setValue('Так');
+    }
+  }
+  return { ok: true };
 }
 
 function testGetVerificationStats() {

@@ -60,10 +60,10 @@ body {
 .logo {
   font-weight: 800;
   font-size: 13px;
-  color: #fff;
+  color: #22d3ee;
   white-space: nowrap;
 }
-.logo span { color: var(--accent); }
+.logo span { color: #fbbf24; }
 .header-search {
   flex: 1;
   max-width: 320px;
@@ -299,6 +299,47 @@ body {
 .route-status-badge {
   padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;
 }
+
+/* Inline edit input for route cards */
+.detail-inline-edit {
+  width: 100%;
+  padding: 4px 6px;
+  border: 2px solid var(--info);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  background: #fff;
+}
+.detail-inline-edit:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px rgba(139,92,246,0.15);
+}
+
+/* Route card detail tabs */
+.detail-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px 0 8px;
+  flex-wrap: wrap;
+}
+.detail-tab-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.detail-tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+.detail-tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.detail-section { display: none; }
+.detail-section.active { display: block; }
 
 /* Route Detail Panel — centered modal */
 .route-detail-overlay {
@@ -619,6 +660,8 @@ body {
 }
 .card-pkgid { color: var(--text-secondary); font-size: 10px; font-weight: 600; }
 .card-sender-recv { font-weight: 600; }
+.chat-unread-badge { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;line-height:1;animation:pulse-badge 2s infinite; }
+@keyframes pulse-badge { 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
 .card-address {
   display: flex; align-items: center; gap: 4px;
   font-size: 11px; color: var(--text-secondary);
@@ -1119,7 +1162,7 @@ body {
   border-radius: 20px 20px 0 0;
   overflow-y: auto;
   animation: slideUp 0.35s ease-out;
-  padding-bottom: env(safe-area-inset-bottom, 16px);
+  padding-bottom: max(70px, env(safe-area-inset-bottom, 70px));
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
@@ -1840,9 +1883,9 @@ body {
     <!-- Direction Section -->
     <div class="sidebar-section">
       <div class="sidebar-section-header" onclick="toggleSection(this)">
-        🧭 Напрямок <span class="toggle open">▶</span>
+        🧭 Напрямок <span class="toggle">▶</span>
       </div>
-      <div class="sidebar-section-body">
+      <div class="sidebar-section-body hidden">
         <div class="sidebar-item active-ue" data-dir="ue" onclick="setDirection('ue')">
           🇺🇦 УК → Європа <span class="badge-count" id="countUe">0</span>
         </div>
@@ -1855,9 +1898,9 @@ body {
     <!-- Verification Section -->
     <div class="sidebar-section">
       <div class="sidebar-section-header" onclick="toggleSection(this)">
-        🔍 Перевірка <span class="toggle open">▶</span>
+        🔍 Перевірка <span class="toggle">▶</span>
       </div>
-      <div class="sidebar-section-body">
+      <div class="sidebar-section-body hidden">
         <div class="sidebar-item active" data-filter="all" onclick="setVerFilter('all')">
           Всі <span class="badge-count" id="countAll">0</span>
         </div>
@@ -1876,9 +1919,9 @@ body {
     <!-- Routes Section -->
     <div class="sidebar-section">
       <div class="sidebar-section-header" onclick="toggleSection(this)">
-        🚚 Маршрути <span class="toggle open">▶</span>
+        🚚 Маршрути <span class="toggle">▶</span>
       </div>
-      <div class="sidebar-section-body" id="routesSidebar">
+      <div class="sidebar-section-body hidden" id="routesSidebar">
         <!-- Filled by JS -->
       </div>
     </div>
@@ -2190,7 +2233,23 @@ body {
             <div class="add-row-grid">
               <div class="add-row">
                 <label>Опис</label>
-                <input type="text" id="fDescription" placeholder="Опис вмісту">
+                <select id="fDescription">
+                  <option value="">— Оберіть категорію —</option>
+                  <option value="Особисті речі">Особисті речі</option>
+                  <option value="Одяг та взуття">Одяг та взуття</option>
+                  <option value="Документи">Документи</option>
+                  <option value="Ліки">Ліки</option>
+                  <option value="Їжа та продукти">Їжа та продукти</option>
+                  <option value="Електроніка">Електроніка</option>
+                  <option value="Косметика">Косметика</option>
+                  <option value="Іграшки">Іграшки</option>
+                  <option value="Книги">Книги</option>
+                  <option value="Побутова хімія">Побутова хімія</option>
+                  <option value="Запчастини">Запчастини</option>
+                  <option value="Коробка і сумка">Коробка і сумка</option>
+                  <option value="Змішане">Змішане</option>
+                  <option value="Інше">Інше</option>
+                </select>
               </div>
               <div class="add-row">
                 <label>Кількість позицій</label>
@@ -2296,6 +2355,43 @@ body {
   </div>
 </div>
 
+<!-- ===== CLIENT CHAT MODAL ===== -->
+<div class="chat-overlay" id="chatOverlay" onclick="if(event.target===this)closeClientChat()">
+  <div class="chat-modal">
+    <div class="chat-header">
+      <span class="chat-title" id="chatTitle">💬 Чат клієнт</span>
+      <button class="chat-close" onclick="closeClientChat()">&times;</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div style="text-align:center;padding:40px;color:var(--text-secondary);font-size:12px;">Завантаження...</div>
+    </div>
+    <div class="chat-input-bar">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Написати повідомлення..." onkeydown="if(event.key==='Enter')sendChatMessage()">
+      <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.chat-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1100;display:none;align-items:center;justify-content:center;padding:10px; }
+.chat-overlay.open { display:flex; }
+.chat-modal { background:#fff;width:100%;max-width:440px;height:80vh;max-height:600px;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.chat-header { background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between; }
+.chat-title { font-size:14px;font-weight:700; }
+.chat-close { background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px; }
+.chat-messages { flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;background:#f5f7fa; }
+.chat-bubble { max-width:80%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.4;word-wrap:break-word; }
+.chat-bubble.client { align-self:flex-start;background:#e2e8f0;color:#1e293b;border-bottom-left-radius:4px; }
+.chat-bubble.manager { align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px; }
+.chat-bubble-name { font-size:10px;font-weight:700;margin-bottom:2px;opacity:0.7; }
+.chat-bubble-time { font-size:9px;opacity:0.5;margin-top:2px;text-align:right; }
+.chat-input-bar { display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border);background:#fff; }
+.chat-input { flex:1;border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:13px;font-family:inherit;outline:none; }
+.chat-input:focus { border-color:var(--primary); }
+.chat-send-btn { width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+.chat-send-btn:hover { background:var(--primary-dark); }
+</style>
+
 <script>
 // Раннє оголошення функцій для onclick в HTML
 window.openRouteView = function(idx) { if (typeof openRoute === 'function') openRoute(idx); else alert('Маршрути ще завантажуються'); };
@@ -2328,9 +2424,9 @@ window.openRouteView = function(idx) { if (typeof openRoute === 'function') open
 
 // ===== [SECT-CONFIG] КОНФІГУРАЦІЯ =====
 // GAS Web App URLs
-const GAS_URL_POSYLKI = 'https://script.google.com/macros/s/AKfycbzTLwKLzOlyZV_xUagXlAMY4mJK2d2HOG889T4IB-1xc9rmegnhCGEwn9W_doFDiW9nJA/exec';
+const GAS_URL_POSYLKI = 'https://script.google.com/macros/s/AKfycbwTbVML5OSo43a4J4MPHzHyB06uklbooJrQGscvPZ4f7y4aH0biQvxUBfXs1hzbSw-DxA/exec';
 const GAS_URL = GAS_URL_POSYLKI;
-const PASAZHYRY_URL = 'https://botisystem.com/Esco_Express/index.html';
+const PASAZHYRY_URL = 'index.html';
 const USE_MOCK = false;
 
 // ===== [SECT-STATE] GLOBAL STATE =====
@@ -2353,6 +2449,7 @@ let routeData = []; // current route sheet data
 let routeFilterType = 'all'; // all | pax | parcel
 let routeFilterStatus = 'all';
 let routeFilterPay = 'all';
+let _unreadCounts = {}; // { cli_id: count }
 let routeTypeFilter = 'all';
 let routeStatusFilter = 'all';
 let routePayFilter = 'all';
@@ -2845,7 +2942,10 @@ function renderCard(p) {
   const statusPkg = p['Статус посилки'] || '';
   const statusCrm = p['Статус CRM'] || '';
   const rteId = p['RTE_ID'] || '';
+  const cliId = p['CLI_ID'] || '';
+  const smartId = p['Ід_смарт'] || '';
   const tag = p['Тег'] || '';
+  const unreadCount = cliId ? (_unreadCounts[cliId] || 0) : 0;
   const isOpen = openCardId === pkgId;
 
   // Status class
@@ -3002,6 +3102,7 @@ function renderCard(p) {
           <div class="card-row2">
             <span class="card-pkgid">${pkgId}</span>
             <span class="card-sender-recv">👤 ${name || '—'} → ${receiver || '—'}</span>
+            ${unreadCount > 0 ? `<span class="chat-unread-badge" title="${unreadCount} нових повідомлень">${unreadCount}</span>` : ''}
             ${visCols.includes('leadBadge') ? leadBadge : ''} ${visCols.includes('payBadge') ? payBadge : ''} ${visCols.includes('checkBadge') ? checkBadge : ''}
           </div>
           ${visCols.includes('address') && (addressFrom || addressTo) ? `<div class="card-address">📍 ${addressFrom && addressTo ? addressFrom + ' → ' + addressTo : (addressFrom || addressTo)}</div>` : ''}
@@ -3011,7 +3112,7 @@ function renderCard(p) {
       ${visCols.includes('route') ? routeStrip : ''}
       <div class="card-actions" id="actions-${pkgId}">
         <button onclick="event.stopPropagation(); window.open('tel:${phone}')">📞 Дзвінок</button>
-        <button onclick="event.stopPropagation(); openMessenger('${phone}')">💬 Писати</button>
+        <button onclick="event.stopPropagation(); openMessengerPopup('${phone}','${smartId}','${cliId}')">💬 Писати</button>
         ${trackBtn}
         <button onclick="event.stopPropagation(); startVerification('${pkgId}')" style="${controlCheck === 'В перевірці' ? 'background:var(--info);color:#fff;' : ''}">🔍 ${controlCheck === 'В перевірці' ? 'В перевірці' : 'В перевірку'}</button>
         ${controlCheck === 'В перевірці' ? `<button onclick="event.stopPropagation(); completeVerification('${pkgId}')" style="background:var(--success);color:#fff;">✅ Готово</button>` : ''}
@@ -3813,8 +3914,84 @@ var allRouteSheets = [];
 function showConfirm(msg, cb) { if (confirm(msg)) cb(true); else cb(false); }
 function formatTripDate(d) { if (!d) return '—'; var s = String(d); if (s.match(/^\d{4}-\d{2}-\d{2}/)) { var p = s.split('-'); return p[2].substring(0,2) + '.' + p[1] + '.' + p[0]; } return s; }
 function getDirectionCode(dir) { var d = (dir || '').toLowerCase(); return (d.indexOf('єв') === 0 || d.indexOf('eu') === 0 || d.indexOf('європа') === 0) ? 'eu-ua' : 'ua-eu'; }
-function openMessengerPopup(phone, smartId) { var clean = (phone || '').replace(/[^+\d]/g, ''); var grid = document.getElementById('messengerGrid'); if (!grid) return; grid.innerHTML = '<a href="viber://chat?number=' + clean + '" style="display:block;padding:10px;margin:4px 0;background:#7360f2;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;text-align:center;">Viber</a><a href="https://t.me/' + clean + '" style="display:block;padding:10px;margin:4px 0;background:#0088cc;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;text-align:center;">Telegram</a><a href="https://wa.me/' + clean.replace('+','') + '" style="display:block;padding:10px;margin:4px 0;background:#25d366;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;text-align:center;">WhatsApp</a>'; document.getElementById('messengerOverlay').classList.add('show'); }
+function openMessengerPopup(phone, smartId, cliId) {
+  var clean = (phone || '').replace(/[^+\d]/g, '');
+  var grid = document.getElementById('messengerGrid');
+  if (!grid) return;
+  var chatBtn = cliId ? '<button onclick="closeMessengerPopup();openClientChat(\'' + cliId + '\',\'' + clean + '\')" style="display:block;padding:10px;margin:4px 0;background:#8b5cf6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;text-align:center;border:none;width:100%;cursor:pointer;font-family:inherit;font-size:14px;">💬 Чат клієнт</button>' : '';
+  grid.innerHTML = '<a href="viber://chat?number=' + clean + '" style="display:block;padding:10px;margin:4px 0;background:#7360f2;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;text-align:center;">Viber</a><a href="https://t.me/' + clean + '" style="display:block;padding:10px;margin:4px 0;background:#0088cc;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;text-align:center;">Telegram</a><a href="https://wa.me/' + clean.replace('+','') + '" style="display:block;padding:10px;margin:4px 0;background:#25d366;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;text-align:center;">WhatsApp</a>' + chatBtn;
+  document.getElementById('messengerOverlay').classList.add('show');
+}
 function closeMessengerPopup() { var el = document.getElementById('messengerOverlay'); if (el) el.classList.remove('show'); }
+
+// ===== CLIENT CHAT =====
+var _chatCliId = null;
+var _chatPhone = null;
+var _chatPollTimer = null;
+var _chatMessages = [];
+
+function openClientChat(cliId, phone) {
+  _chatCliId = cliId;
+  _chatPhone = phone;
+  document.getElementById('chatTitle').textContent = '💬 Чат клієнт · ' + (phone || cliId);
+  document.getElementById('chatMessages').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);font-size:12px;">⏳ Завантаження...</div>';
+  document.getElementById('chatInput').value = '';
+  document.getElementById('chatOverlay').classList.add('open');
+  loadChatMessages();
+  _chatPollTimer = setInterval(loadChatMessages, 10000);
+}
+
+function closeClientChat() {
+  document.getElementById('chatOverlay').classList.remove('open');
+  if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
+  _chatCliId = null;
+}
+
+async function loadChatMessages() {
+  if (!_chatCliId) return;
+  try {
+    var res = await apiPost('getClientMessages', { cli_id: _chatCliId });
+    if (res.ok && res.data) {
+      _chatMessages = res.data;
+      renderChatMessages();
+      await apiPost('markClientRead', { cli_id: _chatCliId });
+      if (_unreadCounts[_chatCliId]) {
+        delete _unreadCounts[_chatCliId];
+        renderCards();
+      }
+    }
+  } catch(e) { console.error('Chat load error:', e); }
+}
+
+function renderChatMessages() {
+  var container = document.getElementById('chatMessages');
+  if (!_chatMessages.length) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);font-size:12px;">Повідомлень поки немає. Напишіть першим!</div>';
+    return;
+  }
+  container.innerHTML = _chatMessages.map(function(m) {
+    var isManager = m.role === 'manager';
+    var cls = isManager ? 'manager' : 'client';
+    var name = m.sender_name || (isManager ? 'Менеджер' : 'Клієнт');
+    var time = m.date ? new Date(m.date).toLocaleString('uk-UA', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div class="chat-bubble ' + cls + '"><div class="chat-bubble-name">' + name + '</div>' + (m.text || '') + '<div class="chat-bubble-time">' + time + '</div></div>';
+  }).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage() {
+  var input = document.getElementById('chatInput');
+  var text = (input.value || '').trim();
+  if (!text || !_chatCliId) return;
+  input.value = '';
+  _chatMessages.push({ role: 'manager', sender_name: 'Менеджер', text: text, date: new Date().toISOString() });
+  renderChatMessages();
+  try {
+    var res = await apiPost('sendManagerMessage', { cli_id: _chatCliId, text: text, sender_name: 'Менеджер' });
+    if (!res.ok) showToast('❌ Помилка відправки');
+  } catch(e) { showToast('❌ Помилка: ' + e.message); }
+}
+
 function promptDeleteLinkedSheets(baseName) { if (activeRouteIdx !== null) activeRouteIdx = null; loadRoutes(); }
 function setCount(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
 function refreshRouteView() { if (activeRouteIdx !== null) openRoute(activeRouteIdx, true); }
@@ -4087,28 +4264,37 @@ function renderRoutes() {
 function renderRouteCard(r, idx, sheetName) {
     const rteId = r['RTE_ID'] || '';
     const type = r['Тип запису'] || '';
-    const name = r['Піб пасажира'] || '—';
-    const phone = String(r['Телефон пасажира'] || '—');
-    const date = r['Дата рейсу'] || '';
+    const isPax = type.includes('Пасажир');
+    // Universal name/phone: support both passenger and parcel column names
+    const name = r['Піб пасажира'] || r['Піб відправника'] || r['Піб'] || '—';
+    const phone = String(r['Телефон пасажира'] || r['Телефон реєстратора'] || r['Телефон'] || '—');
+    const date = r['Дата рейсу'] || r['Дата відправки'] || '';
     const direction = r['Напрям'] || '';
     const auto = r['Номер авто'] || '';
     const seat = r['Місце в авто'] || '';
-    const seats = r['Кількість місць'] || 1;
-    const from = r['Адреса відправки'] || '';
-    const to = r['Адреса прибуття'] || r['Адреса отримувача'] || '';
+    const seats = r['Кількість місць'] || (isPax ? 1 : '');
+    const from = r['Адреса відправки'] || r['Адреса'] || '';
+    const to = r['Адреса прибуття'] || r['Адреса отримувача'] || r['Адреса в Європі'] || '';
     const price = r['Сума'] || '';
-    const curr = r['Валюта'] || '';
+    const curr = r['Валюта'] || r['Валюта оплати'] || '';
     const deposit = r['Завдаток'] || '';
     const depositCurr = r['Валюта завдатку'] || '';
     const payStatus = r['Статус оплати'] || '';
-    const status = r['Статус'] || '';
+    const status = r['Статус'] || r['Статус ліда'] || '';
     const driver = r['Водій'] || '';
-    const weight = r['Вага багажу'] || '';
+    const weight = r['Вага багажу'] || r['Кг'] || r['Кг посилки'] || '';
     const weightPrice = r['Ціна багажу'] || '';
     const weightCurr = r['Валюта багажу'] || '';
     const note = r['Примітка'] || '';
     const phoneReg = r['Телефон реєстратора'] || '';
     const smartId = r['Ід_смарт'] || '';
+    const cliId = r['CLI_ID'] || '';
+    // Parcel-specific fields
+    const receiver = r['Піб отримувача'] || '';
+    const receiverPhone = r['Телефон отримувача'] || '';
+    const ttn = r['Номер ТТН'] || '';
+    const description = r['Опис'] || r['Опис посилки'] || '';
+    const qty = r['Кількість позицій'] || '';
 
     const statusClass = status === 'Підтверджено' ? 'status-confirmed' :
         status === 'Відмова' ? 'status-refused' :
@@ -4129,7 +4315,6 @@ function renderRouteCard(r, idx, sheetName) {
         status === 'Новий' ? '<span class="badge badge-new">Новий</span>' :
         status === 'Відмова' ? '<span class="badge badge-refused">Відмова</span>' : '';
 
-    const isPax = type.includes('Пасажир');
     const typeIcon = isPax ? '👤' : '📦';
     const displayDate = date ? formatTripDate(date) : '—';
     const isSelected = routeSelectedIds.has(rteId);
@@ -4138,30 +4323,88 @@ function renderRouteCard(r, idx, sheetName) {
     const safeSheet = (sheetName || '').replace(/'/g, "\\'");
     const cleanPhone = (phone || '').replace(/[^+\d]/g, '');
 
-    // All detail fields for expanded view
-    const allFields = [
-        {label: 'ПІБ', key: 'Піб пасажира', value: name},
-        {label: 'Телефон', key: 'Телефон пасажира', value: phone},
-        {label: 'Тел. реєстратора', key: 'Телефон реєстратора', value: phoneReg},
-        {label: 'Напрям', key: 'Напрям', value: direction},
-        {label: 'Дата рейсу', key: 'Дата рейсу', value: displayDate},
-        {label: 'Кількість місць', key: 'Кількість місць', value: seats},
-        {label: 'Номер авто', key: 'Номер авто', value: auto},
-        {label: 'Місце в авто', key: 'Місце в авто', value: seat},
-        {label: 'Водій', key: 'Водій', value: driver},
-        {label: 'Адреса відправки', key: 'Адреса відправки', value: from},
-        {label: 'Адреса прибуття', key: 'Адреса прибуття', value: to},
-        {label: 'Сума', key: 'Сума', value: price},
-        {label: 'Валюта', key: 'Валюта', value: curr},
-        {label: 'Завдаток', key: 'Завдаток', value: deposit},
-        {label: 'Валюта завдатку', key: 'Валюта завдатку', value: depositCurr},
-        {label: 'Вага багажу', key: 'Вага багажу', value: weight},
-        {label: 'Ціна багажу', key: 'Ціна багажу', value: weightPrice},
-        {label: 'Валюта багажу', key: 'Валюта багажу', value: weightCurr},
-        {label: 'Статус оплати', key: 'Статус оплати', value: payStatus},
-        {label: 'Статус', key: 'Статус', value: status},
-        {label: 'Примітка', key: 'Примітка', value: note}
+    // Sections for expanded detail view — different for passengers vs parcels
+    const sections = isPax ? [
+        { title: '📋 Основне', fields: [
+            {label: 'ПІБ', key: 'Піб пасажира', value: name},
+            {label: 'Телефон', key: 'Телефон пасажира', value: phone},
+            {label: 'Тел. реєстратора', key: 'Телефон реєстратора', value: phoneReg},
+            {label: 'Напрям', key: 'Напрям', value: direction},
+            {label: 'Дата рейсу', key: 'Дата рейсу', value: displayDate},
+            {label: 'Статус', key: 'Статус', value: status}
+        ]},
+        { title: '💰 Фінанси', fields: [
+            {label: 'Сума', key: 'Сума', value: price},
+            {label: 'Валюта', key: 'Валюта', value: curr},
+            {label: 'Завдаток', key: 'Завдаток', value: deposit},
+            {label: 'Валюта завдатку', key: 'Валюта завдатку', value: depositCurr},
+            {label: 'Статус оплати', key: 'Статус оплати', value: payStatus},
+            {label: 'Вага багажу', key: 'Вага багажу', value: weight},
+            {label: 'Ціна багажу', key: 'Ціна багажу', value: weightPrice},
+            {label: 'Валюта багажу', key: 'Валюта багажу', value: weightCurr}
+        ]},
+        { title: '🚐 Рейс', fields: [
+            {label: 'Адреса відправки', key: 'Адреса відправки', value: from},
+            {label: 'Адреса прибуття', key: 'Адреса прибуття', value: to},
+            {label: 'Кількість місць', key: 'Кількість місць', value: seats},
+            {label: 'Номер авто', key: 'Номер авто', value: auto},
+            {label: 'Місце в авто', key: 'Місце в авто', value: seat},
+            {label: 'Водій', key: 'Водій', value: driver}
+        ]},
+        { title: '📝 Примітка', fields: [
+            {label: 'Примітка', key: 'Примітка', value: note}
+        ]}
+    ] : [
+        { title: '📦 Посилка', fields: [
+            {label: 'Відправник', key: 'Піб відправника', value: name},
+            {label: 'Тел. відправника', key: 'Телефон реєстратора', value: phone},
+            {label: 'Отримувач', key: 'Піб отримувача', value: receiver},
+            {label: 'Тел. отримувача', key: 'Телефон отримувача', value: receiverPhone},
+            {label: 'Напрям', key: 'Напрям', value: direction},
+            {label: 'Статус', key: 'Статус', value: status},
+            {label: 'Номер ТТН', key: 'Номер ТТН', value: ttn},
+            {label: 'Опис', key: 'Опис', value: description},
+            {label: 'Кількість', key: 'Кількість позицій', value: qty},
+            {label: 'Вага (кг)', key: 'Кг', value: weight}
+        ]},
+        { title: '💰 Фінанси', fields: [
+            {label: 'Сума', key: 'Сума', value: price},
+            {label: 'Валюта', key: 'Валюта', value: curr},
+            {label: 'Завдаток', key: 'Завдаток', value: deposit},
+            {label: 'Статус оплати', key: 'Статус оплати', value: payStatus}
+        ]},
+        { title: '🚐 Рейс', fields: [
+            {label: 'Адреса відправки', key: 'Адреса відправки', value: from},
+            {label: 'Адреса доставки', key: 'Адреса прибуття', value: to},
+            {label: 'Номер авто', key: 'Номер авто', value: auto},
+            {label: 'Водій', key: 'Водій', value: driver}
+        ]},
+        { title: '📝 Примітка', fields: [
+            {label: 'Примітка', key: 'Примітка', value: note}
+        ]}
     ];
+
+    function renderDetailField(f) {
+        const val = f.value || '—';
+        const safeKey = f.key.replace(/'/g, "\\'");
+        return `<div class="detail-block">
+            <div class="detail-block-label">${f.label}</div>
+            <div class="detail-block-value" id="rdv-${rteId}-${f.key}">${val}</div>
+            <div class="detail-block-actions">
+                <button class="detail-micro-btn" onclick="event.stopPropagation(); startRouteInlineEdit('${rteId}','${safeKey}','${safeSheet}')">✏️</button>
+            </div>
+        </div>`;
+    }
+
+    const tabsBar = `<div class="detail-tabs" onclick="event.stopPropagation()">` +
+        sections.map((s, i) => `<button class="detail-tab-btn${i === 0 ? ' active' : ''}" onclick="switchDetailTab('${rteId}',${i},this)">${s.title}</button>`).join('') +
+        `</div>`;
+
+    const sectionsHtml = sections.map((s, i) => `
+        <div class="detail-section${i === 0 ? ' active' : ''}" data-tab-id="${rteId}" data-tab-idx="${i}">
+            <div class="details-grid">${s.fields.map(renderDetailField).join('')}</div>
+        </div>
+    `).join('');
 
     return `<div class="route-card ${statusClass} ${isSelected ? 'selected' : ''}" id="rte-card-${rteId}">
         <div class="route-card-header" onclick="toggleRouteDetails('${rteId}')">
@@ -4171,7 +4414,7 @@ function renderRouteCard(r, idx, sheetName) {
                 </div>
                 ${dirLabel ? `<span class="card-direction ${dirCls}">${dirLabel}</span>` : ''}
                 <span class="route-card-phone">${phone}</span>
-                <span class="route-card-seats">${seats}м</span>
+                ${seats ? `<span class="route-card-seats">${isPax ? seats + 'м' : qty ? qty + 'шт' : ''}</span>` : ''}
                 <span class="route-card-date">${displayDate}</span>
                 ${seat ? `<span style="background:#e0e7ff;color:#3730a3;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;">💺 ${seat}</span>` : ''}
                 <span class="route-card-price">${price ? price + ' ' + curr : ''}</span>
@@ -4179,6 +4422,7 @@ function renderRouteCard(r, idx, sheetName) {
             <div class="route-card-info">
                 <span style="font-size:12px;">${typeIcon}</span>
                 <span class="route-card-name">${name}</span>
+                ${!isPax && receiver ? `<span style="color:var(--text-secondary);font-size:11px;">→ ${receiver}</span>` : ''}
                 <span style="color:var(--text-secondary);font-size:10px;">${rteId}</span>
                 ${lsBadge} ${payBadge}
             </div>
@@ -4186,29 +4430,20 @@ function renderRouteCard(r, idx, sheetName) {
             <div class="route-card-meta">
                 ${auto ? `<span>🚐 ${auto}</span>` : ''}
                 ${driver ? `<span>🧑 ${driver}</span>` : ''}
-                ${weight ? `<span>📦 ${weight}</span>` : ''}
+                ${weight ? `<span>⚖️ ${weight}кг</span>` : ''}
+                ${!isPax && ttn ? `<span>📋 ${ttn}</span>` : ''}
+                ${!isPax && description ? `<span>📦 ${description}</span>` : ''}
+                ${!isPax && qty ? `<span>📊 ${qty}шт</span>` : ''}
                 ${note ? `<span>📝 ${note.substring(0, 30)}${note.length > 30 ? '...' : ''}</span>` : ''}
             </div>
         </div>
         <div class="route-card-details ${isDetailsOpen ? 'show' : ''}" id="rte-details-${rteId}">
-            <div class="details-grid">
-                ${allFields.map(f => {
-                    const val = f.value || '—';
-                    const safeVal = String(f.value || '').replace(/'/g, "\\'");
-                    const safeKey = f.key.replace(/'/g, "\\'");
-                    return `<div class="detail-block">
-                        <div class="detail-block-label">${f.label}</div>
-                        <div class="detail-block-value" id="rdv-${rteId}-${f.key}">${val}</div>
-                        <div class="detail-block-actions">
-                            <button class="detail-micro-btn" onclick="event.stopPropagation(); startRouteInlineEdit('${rteId}','${safeKey}','${safeSheet}')">✏️</button>
-                        </div>
-                    </div>`;
-                }).join('')}
-            </div>
+            ${tabsBar}
+            ${sectionsHtml}
             <!-- Кнопки дій для ліда: 2 рядки -->
             <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
                 <button class="btn-card-action btn-call" style="flex:1 1 calc(33% - 6px)" onclick="event.stopPropagation(); window.open('tel:${cleanPhone}')">📞 Дзвінок</button>
-                <button class="btn-card-action btn-write" style="flex:1 1 calc(33% - 6px)" onclick="event.stopPropagation(); openMessengerPopup('${cleanPhone}','${smartId}')">✉️ Писати</button>
+                <button class="btn-card-action btn-write" style="flex:1 1 calc(33% - 6px)" onclick="event.stopPropagation(); openMessengerPopup('${cleanPhone}','${smartId}','${cliId}')">✉️ Писати</button>
                 <button class="btn-card-action btn-edit" style="flex:1 1 calc(33% - 6px)" onclick="event.stopPropagation(); openRouteEditModal('${rteId}','${safeSheet}')">✏️ Редагувати</button>
                 <button class="btn-card-action" style="flex:1 1 calc(33% - 6px);background:#ede9fe;color:#7c3aed;" onclick="event.stopPropagation(); transferRouteLeadModal('${rteId}','${safeSheet}')">🔄 Пересадити</button>
                 <button class="btn-card-action" style="flex:1 1 calc(33% - 6px);background:#f3f4f6;color:#6b7280;" onclick="event.stopPropagation(); archiveFromRoute('${rteId}','${safeSheet}','${name.replace(/'/g,"\\'")}')">📦 Архів</button>
@@ -4216,6 +4451,17 @@ function renderRouteCard(r, idx, sheetName) {
             </div>
         </div>
     </div>`;
+}
+
+// ── Перемикання табів у деталях картки ──
+function switchDetailTab(rteId, idx, btn) {
+    // Toggle tab buttons
+    btn.parentElement.querySelectorAll('.detail-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Toggle sections
+    document.querySelectorAll(`.detail-section[data-tab-id="${rteId}"]`).forEach(s => {
+        s.classList.toggle('active', Number(s.dataset.tabIdx) === idx);
+    });
 }
 
 // ── Деталі картки маршруту ──
@@ -4270,6 +4516,8 @@ function updateRouteBulkToolbar() {
 }
 
 // ── Inline edit для полів маршруту ──
+var _routeInlineSaving = false;
+
 function startRouteInlineEdit(rteId, colName, sheetName) {
     const sheet = routes[activeRouteIdx];
     if (!sheet) return;
@@ -4296,30 +4544,37 @@ function startRouteInlineEdit(rteId, colName, sheetName) {
         el.innerHTML = `<input class="detail-inline-edit" type="date" value="${val}" onchange="saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value)" onblur="cancelRouteInlineEdit('${rteId}','${colName}')">`;
         el.querySelector('input').focus();
     } else {
-        el.innerHTML = `<input class="detail-inline-edit" type="text" value="${val}" onkeydown="if(event.key==='Enter')saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value);if(event.key==='Escape')cancelRouteInlineEdit('${rteId}','${colName}')" onblur="saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value)">`;
-        el.querySelector('input').focus();
+        el.innerHTML = `<input class="detail-inline-edit" type="text" value="${val}" onkeydown="if(event.key==='Enter'){event.target.blur();}" onblur="saveRouteInlineEdit('${rteId}','${colName}','${sheetName}',this.value)">`;
+        const inp = el.querySelector('input');
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
     }
 }
 async function saveRouteInlineEdit(rteId, colName, sheetName, newVal) {
-    const sheet = routes[activeRouteIdx];
-    if (!sheet) return;
-    const row = (sheet.rows || []).find(r => r['RTE_ID'] === rteId);
-    if (!row) return;
-    const oldVal = row[colName] || '';
-    if (String(newVal) === String(oldVal)) { cancelRouteInlineEdit(rteId, colName); return; }
+    if (_routeInlineSaving) return;
+    _routeInlineSaving = true;
+    try {
+        const sheet = routes[activeRouteIdx];
+        if (!sheet) return;
+        const row = (sheet.rows || []).find(r => r['RTE_ID'] === rteId);
+        if (!row) return;
+        const oldVal = row[colName] || '';
+        if (String(newVal) === String(oldVal)) { cancelRouteInlineEdit(rteId, colName); return; }
 
-    row[colName] = newVal;
-    const el = document.getElementById('rdv-' + rteId + '-' + colName);
-    if (el) el.textContent = newVal || '—';
+        row[colName] = newVal;
+        const el = document.getElementById('rdv-' + rteId + '-' + colName);
+        if (el) el.textContent = newVal || '—';
 
-    const res = await apiPost('updateRouteField', { sheet: sheetName, rte_id: rteId, col: colName, value: newVal });
-    if (res.ok) {
-        showToast('✅ Збережено');
-        renderRoutes();
-    } else {
-        showToast('❌ Помилка: ' + (res.error || ''));
-        row[colName] = oldVal;
-        if (el) el.textContent = oldVal || '—';
+        const res = await apiPost('updateRouteField', { sheet: sheetName, rte_id: rteId, col: colName, value: newVal });
+        if (res.ok) {
+            showToast('✅ Збережено');
+        } else {
+            showToast('❌ Помилка: ' + (res.error || ''));
+            row[colName] = oldVal;
+            if (el) el.textContent = oldVal || '—';
+        }
+    } finally {
+        _routeInlineSaving = false;
     }
 }
 function cancelRouteInlineEdit(rteId, colName) {
@@ -5570,6 +5825,7 @@ async function archiveMassDelete() {
 function createRoute() { alert('Створення нового маршруту'); }
 
 // ===== [SECT-ADDFORM] ADD PARCEL FORM =====
+function openRouteAddForm() { openAddForm(); }
 function openAddForm() {
   addFormDirection = currentDirection;
   document.getElementById('fDirection').value = addFormDirection;
@@ -5688,6 +5944,23 @@ function parseSmsText() {
   const weightMatch = text.match(/(\d+[.,]?\d*)\s*кг/i);
   const weight = weightMatch ? weightMatch[1].replace(',', '.') : '';
 
+  // TTN: 14-digit number (Nova Poshta tracking)
+  const ttnMatch = text.match(/(?:ттн|ТТН|ttn|TTN|номер|трек)[:\s]*(\d{14})/i) || text.match(/\b(\d{14})\b/);
+  const ttn = ttnMatch ? ttnMatch[1] : '';
+
+  // Quantity: "3шт", "3 шт", "3 позиції"
+  const qtyMatch = text.match(/(\d+)\s*(?:шт|позиц|місц|коробк|пакет)/i);
+  const qty = qtyMatch ? qtyMatch[1] : '';
+
+  // Estimated value: "500грн", "200 грн", "вартість 500"
+  const valueMatch = text.match(/(?:вартість|ціна|оцінка|цінність)[:\s]*(\d+)/i) || text.match(/(\d+)\s*(?:грн|uah|₴)/i);
+  const estValue = valueMatch ? valueMatch[1] : '';
+
+  // Description: "коробка і сумка", "документи", "одяг"
+  const descKeywords = ['коробка','сумка','пакет','документи','одяг','взуття','ліки','їжа','техніка','електроніка','іграшки','книги','косметика','посилка','особисті речі'];
+  const foundDescs = descKeywords.filter(k => text.toLowerCase().includes(k));
+  const description = foundDescs.length > 0 ? foundDescs.join(', ') : '';
+
   // NP: "Київ 174", "Одеса №5", "Львів відділення 12"
   const npMatch = text.match(/([\wа-яіїєґА-ЯІЇЄҐ']+)\s+(?:№|відділення\s*)?(\d{1,4})/);
 
@@ -5718,6 +5991,8 @@ function parseSmsText() {
     if (cleanPhones[1]) document.getElementById('fPhoneReceiver').value = cleanPhones[1];
     if (npMatch) document.getElementById('fCityNP').value = npMatch[1] + ' ' + npMatch[2];
     if (weight) document.getElementById('fWeight').value = weight;
+    if (qty) { var qEl = document.getElementById('fQty'); if (qEl) qEl.value = qty; }
+    if (description) { var dEl = document.getElementById('fDescription'); if (dEl) dEl.value = description; }
 
     // Open receiver section if data detected
     if (cleanPhones[1] || npMatch) {
@@ -5731,12 +6006,16 @@ function parseSmsText() {
     if (cleanPhones[0]) document.getElementById('fPhoneReceiverUE').value = cleanPhones[0];
     if (foundSwiss) document.getElementById('fAddressTo').value = foundSwiss;
     if (weight) document.getElementById('fWeightUE').value = weight;
+    if (ttn) document.getElementById('fTTN').value = ttn;
+    if (qty) document.getElementById('fQty').value = qty;
+    if (estValue) document.getElementById('fEstValueUE').value = estValue;
+    if (description) document.getElementById('fDescription').value = description;
   }
 
   // Check for duplicate
   if (cleanPhones[0]) checkDuplicatePhone(cleanPhones[0]);
 
-  const filled = [name, cleanPhones[0], weight, foundSwiss, npMatch ? 'NP' : ''].filter(Boolean);
+  const filled = [name, cleanPhones[0], weight, foundSwiss, npMatch ? 'NP' : '', ttn ? 'ТТН' : '', qty, estValue, description].filter(Boolean);
   showToast(`Розпізнано: ${filled.length} полів`, 'success');
 }
 
@@ -5914,10 +6193,11 @@ async function loadData() {
   showLoader();
 
   try {
-    const [dataRes, statsRes, routesRes] = await Promise.all([
+    const [dataRes, statsRes, routesRes, unreadRes] = await Promise.all([
       apiPost('getAll', { sheet: 'all', filter: {} }),
       apiPost('getStats', {}),
-      apiPost('getRoutesList', {})
+      apiPost('getRoutesList', {}),
+      apiPost('getUnreadCounts', {})
     ]);
 
     if (dataRes.ok) {
@@ -5934,6 +6214,10 @@ async function loadData() {
 
     if (statsRes.ok) {
       stats = statsRes.stats || {};
+    }
+
+    if (unreadRes && unreadRes.ok) {
+      _unreadCounts = unreadRes.data || {};
     }
 
     if (routesRes && routesRes.ok) {
