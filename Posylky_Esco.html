@@ -6479,6 +6479,45 @@ async function applyTag() {
   font-size: 12px; font-weight: 700;
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
+.ttn-ocr-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  color: #fff; cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.ttn-ocr-toggle.on { background: rgba(16,185,129,0.7); border-color: #10b981; }
+.ttn-ocr-toggle .dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; }
+.ttn-ocr-toggle.on .dot { background: #fff; box-shadow: 0 0 6px #fff; }
+.ttn-count-badge {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 58px);
+  right: 16px;
+  z-index: 11;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 14px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.ttn-count-badge .lbl { font-size: 10px; opacity: 0.7; font-weight: 600; }
+.ttn-count-badge .val { font-size: 14px; }
+.ttn-count-badge.detected {
+  background: rgba(245,158,11,0.85);
+  border-color: #f59e0b;
+  animation: ttnCountPulse 0.6s ease-out;
+}
+@keyframes ttnCountPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
 .ttn-scan-frame {
   position: absolute;
   top: 50%; left: 50%;
@@ -6609,8 +6648,18 @@ async function applyTag() {
 
   <div class="ttn-scan-topbar">
     <button class="ttn-scan-close" onclick="closeScanner()">✕</button>
-    <div class="ttn-scan-title">Сканер ТТН</div>
-    <div class="ttn-scan-counter" id="ttnCounter">📊 0</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="ttn-ocr-toggle" id="ttnOcrToggle" onclick="ttnToggleOcr()" title="Автозчитування 'N із M'">
+        <span class="dot"></span><span id="ttnOcrTglLabel">OCR off</span>
+      </button>
+      <div class="ttn-scan-counter" id="ttnCounter">📊 0</div>
+    </div>
+  </div>
+
+  <!-- Count badge (N із M) — завжди видимий -->
+  <div class="ttn-count-badge" id="ttnCountBadge" style="display:none;">
+    <span class="lbl">МІСЦЬ</span>
+    <span class="val"><span id="ttnCountCur">1</span> / <span id="ttnCountTot">1</span></span>
   </div>
 
   <div class="ttn-scan-toast" id="ttnToast">
@@ -6764,6 +6813,16 @@ async function applyTag() {
   box-shadow: 0 4px 12px rgba(16,185,129,0.3);
 }
 .verif-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.verif-qty-btn {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+  font-family: inherit; font-size: 20px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}
+.verif-qty-btn:hover { background: #e5e7eb; }
+.verif-qty-input { width: 60px; flex-shrink: 0; }
 
 /* ===== DESCRIPTION CATEGORY PICKER ===== */
 .desc-picker { margin-top: 6px; }
@@ -6852,6 +6911,19 @@ async function applyTag() {
         <input type="number" step="0.1" min="0" inputmode="decimal" class="verif-input" id="verifWeight" placeholder="напр. 2.3">
       </div>
 
+      <!-- Кількість місць -->
+      <div>
+        <label class="verif-field-label">📦 Кількість місць під цей ТТН</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" class="verif-qty-btn" onclick="verifAdjQty(-1)">−</button>
+          <input type="number" min="1" max="99" inputmode="numeric" class="verif-input verif-qty-input" id="verifQty" value="1" style="text-align:center;font-weight:700;">
+          <span style="color:#6b7280;font-weight:700;">/</span>
+          <input type="number" min="1" max="99" inputmode="numeric" class="verif-input verif-qty-input" id="verifQtyTotal" value="1" style="text-align:center;font-weight:700;">
+          <button type="button" class="verif-qty-btn" onclick="verifAdjQty(1)">+</button>
+        </div>
+        <div id="verifQtyHint" style="font-size:11px;color:#6b7280;margin-top:4px;">💡 За замовчуванням 1/1. Якщо коробок кілька — встав N/M вручну або увімкни OCR.</div>
+      </div>
+
       <!-- Коментар -->
       <div>
         <label class="verif-field-label">💬 Коментар</label>
@@ -6875,6 +6947,113 @@ var ttnIsPaused = false;
 var ttnScanCount = 0;
 var ttnDataChanged = false; // якщо щось оновили в БД — оновити дані при закритті
 
+// ===== OCR: "N із M" кількість місць =====
+var OCR_TOGGLE_KEY = 'esco_ocr_count_enabled_v1';
+var ttnOcrEnabled = (localStorage.getItem(OCR_TOGGLE_KEY) === '1');
+var ttnOcrLoading = false;
+var ttnOcrWorker = null;
+// Останній OCR-результат (N/M), передається у форму перевірки
+var ttnLastOcrCount = { cur: 1, tot: 1, detected: false };
+// Статистика сесії: список ТТН із >1 місць
+var ttnSessionMulti = []; // [{ttn, cur, tot}]
+
+function ttnUpdateOcrToggleUI() {
+  var btn = document.getElementById('ttnOcrToggle');
+  var lbl = document.getElementById('ttnOcrTglLabel');
+  if (!btn) return;
+  btn.classList.toggle('on', ttnOcrEnabled);
+  lbl.textContent = ttnOcrEnabled ? 'OCR on' : 'OCR off';
+}
+
+function ttnToggleOcr() {
+  ttnOcrEnabled = !ttnOcrEnabled;
+  localStorage.setItem(OCR_TOGGLE_KEY, ttnOcrEnabled ? '1' : '0');
+  ttnUpdateOcrToggleUI();
+  if (ttnOcrEnabled) {
+    ttnLoadOcrEngine(); // прогрів
+  }
+}
+
+function ttnLoadOcrEngine() {
+  if (ttnOcrWorker || ttnOcrLoading) return Promise.resolve(ttnOcrWorker);
+  ttnOcrLoading = true;
+  return new Promise(function(resolve) {
+    // Динамічно підключаємо Tesseract.js
+    if (typeof Tesseract === 'undefined') {
+      var s = document.createElement('script');
+      s.src = 'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = function() { buildWorker().then(resolve); };
+      s.onerror = function() { ttnOcrLoading = false; resolve(null); };
+      document.head.appendChild(s);
+    } else {
+      buildWorker().then(resolve);
+    }
+    function buildWorker() {
+      return Tesseract.createWorker('eng', 1, {
+        // англ. моделі досить — лише цифри + /
+      }).then(function(w) {
+        return w.setParameters({
+          tessedit_char_whitelist: '0123456789/',
+          classify_bln_numeric_mode: '1'
+        }).then(function() {
+          ttnOcrWorker = w;
+          ttnOcrLoading = false;
+          return w;
+        });
+      }).catch(function(err) {
+        console.warn('OCR worker init failed', err);
+        ttnOcrLoading = false;
+        return null;
+      });
+    }
+  });
+}
+
+// Захопити кадр із відео (html5-qrcode рендерить <video> у ttnScanReader)
+function ttnCaptureFrame() {
+  var readerEl = document.getElementById('ttnScanReader');
+  if (!readerEl) return null;
+  var video = readerEl.querySelector('video');
+  if (!video || !video.videoWidth) return null;
+
+  var W = video.videoWidth, H = video.videoHeight;
+  var canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, W, H);
+  return canvas;
+}
+
+// OCR кадру: повертає { cur, tot } або null
+function ttnOcrExtractCount(canvas) {
+  if (!canvas || !ttnOcrWorker) return Promise.resolve(null);
+  return ttnOcrWorker.recognize(canvas).then(function(r) {
+    var txt = (r && r.data && r.data.text) || '';
+    // Regex: шукаємо найкраще співпадіння "N/M"
+    var matches = txt.match(/\b(\d{1,3})\s*\/\s*(\d{1,3})\b/g);
+    if (!matches || !matches.length) return null;
+    // Беремо перший валідний (cur <= tot, tot >= 1, cur >= 1)
+    for (var i = 0; i < matches.length; i++) {
+      var m = matches[i].match(/(\d+)\s*\/\s*(\d+)/);
+      if (!m) continue;
+      var cur = parseInt(m[1], 10), tot = parseInt(m[2], 10);
+      if (cur >= 1 && tot >= 1 && cur <= tot && tot <= 99) {
+        return { cur: cur, tot: tot };
+      }
+    }
+    return null;
+  }).catch(function(){ return null; });
+}
+
+function ttnShowCountBadge(cur, tot, detected) {
+  var b = document.getElementById('ttnCountBadge');
+  if (!b) return;
+  document.getElementById('ttnCountCur').textContent = cur;
+  document.getElementById('ttnCountTot').textContent = tot;
+  b.style.display = 'flex';
+  b.classList.toggle('detected', !!detected);
+}
+
 function openScanner() {
   if (typeof Html5Qrcode === 'undefined') {
     showToast('Бібліотека сканера не завантажилась', 'error');
@@ -6886,12 +7065,35 @@ function openScanner() {
   document.getElementById('ttnBottombar').style.display = 'none';
   ttnScanCount = 0;
   ttnDataChanged = false;
+  ttnSessionMulti = [];
+  ttnLastOcrCount = { cur: 1, tot: 1, detected: false };
   document.getElementById('ttnCounter').textContent = '📊 0';
+  // Бейдж кількості завжди видимий (default 1/1)
+  ttnShowCountBadge(1, 1, false);
+  ttnUpdateOcrToggleUI();
+  // Якщо OCR увімкнений — прогріваємо воркер у фоні
+  if (ttnOcrEnabled) ttnLoadOcrEngine();
 }
 
 function closeScanner() {
   ttnStopCamera().then(function() {
     document.getElementById('ttnScanOverlay').classList.remove('open');
+    // Зведення по багатомісних посилках сесії
+    if (ttnSessionMulti && ttnSessionMulti.length > 0) {
+      var uniqByTtn = {};
+      ttnSessionMulti.forEach(function(x){ uniqByTtn[x.ttn] = x; });
+      var keys = Object.keys(uniqByTtn);
+      if (keys.length > 0) {
+        var lines = keys.slice(0, 5).map(function(k){
+          var x = uniqByTtn[k];
+          return '• ' + k + ' → ' + x.cur + '/' + x.tot;
+        }).join('\n');
+        var msg = '⚠️ Багатомісних ТТН у сесії: ' + keys.length + '\n' + lines +
+                  (keys.length > 5 ? '\n…' : '') + '\n\nПеревір, чи всі місця просканував.';
+        setTimeout(function(){ alert(msg); }, 200);
+      }
+    }
+    ttnSessionMulti = [];
     if (ttnDataChanged && typeof loadData === 'function') loadData();
   });
 }
@@ -6952,6 +7154,8 @@ function ttnOnStart() {
 function ttnOnScanSuccess(decodedText) {
   if (ttnIsPaused) return;
   ttnIsPaused = true;
+  // Захоплюємо кадр ДО паузи (ще є відео)
+  var capturedCanvas = ttnOcrEnabled ? ttnCaptureFrame() : null;
   if (ttnScanner) ttnScanner.pause(true);
   if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
 
@@ -6960,6 +7164,11 @@ function ttnOnScanSuccess(decodedText) {
 
   ttnShowToast({ variant: '', icon: '⏳', label: 'Перевірка...', value: decodedText, status: '' });
 
+  // Default: 1/1 — миттєво показуємо, не тормозимо.
+  ttnLastOcrCount = { cur: 1, tot: 1, detected: false };
+  ttnShowCountBadge(1, 1, false);
+
+  // Паралельний запит до бекенду
   fetch(GAS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -6968,6 +7177,30 @@ function ttnOnScanSuccess(decodedText) {
   .then(function(r){ return r.json(); })
   .then(function(res){ ttnHandleResult(decodedText, res); })
   .catch(function(err){ ttnHandleResult(decodedText, { ok: false, error: err.message || 'Немає зв\'язку' }); });
+
+  // Фоновий OCR (не блокує, не чекаємо)
+  if (ttnOcrEnabled && capturedCanvas) {
+    ttnLoadOcrEngine().then(function(w) {
+      if (!w) return;
+      return ttnOcrExtractCount(capturedCanvas);
+    }).then(function(found) {
+      if (!found) return;
+      ttnLastOcrCount = { cur: found.cur, tot: found.tot, detected: true };
+      ttnShowCountBadge(found.cur, found.tot, true);
+      // Якщо форма перевірки вже відкрита — оновити поле
+      var qInput = document.getElementById('verifQty');
+      var qTotal = document.getElementById('verifQtyTotal');
+      if (qInput && qTotal && document.getElementById('verifOverlay').classList.contains('open')) {
+        qInput.value = found.cur;
+        qTotal.value = found.tot;
+        var hint = document.getElementById('verifQtyHint');
+        if (hint) hint.textContent = '📷 Визначено автоматично (' + found.cur + ' із ' + found.tot + ')';
+      }
+      if (found.tot > 1) {
+        ttnSessionMulti.push({ ttn: decodedText, cur: found.cur, tot: found.tot });
+      }
+    }).catch(function(){});
+  }
 }
 
 function ttnHandleResult(ttn, res) {
@@ -7305,6 +7538,18 @@ function openVerificationForm(pkgObj) {
   document.getElementById('verifWeight').value = pkgObj['Кг'] || '';
   document.getElementById('verifComment').value = pkgObj['Примітка'] || '';
 
+  // Кількість місць: пріоритет — значення з БД, далі OCR-результат, далі 1/1
+  var qCur = 1, qTot = 1, hintTxt = '💡 За замовчуванням 1/1. Якщо коробок кілька — встав N/M вручну.';
+  var storedTot = parseInt(pkgObj['Кількість місць'] || pkgObj['Місць'] || '', 10);
+  if (storedTot > 0) { qTot = storedTot; qCur = parseInt(pkgObj['Поточне місце'] || '1', 10) || 1; }
+  if (ttnLastOcrCount && ttnLastOcrCount.detected) {
+    qCur = ttnLastOcrCount.cur; qTot = ttnLastOcrCount.tot;
+    hintTxt = '📷 Визначено автоматично (' + qCur + ' із ' + qTot + ') — перевір і виправ якщо не так.';
+  }
+  document.getElementById('verifQty').value = qCur;
+  document.getElementById('verifQtyTotal').value = qTot;
+  document.getElementById('verifQtyHint').textContent = hintTxt;
+
   var preview = document.getElementById('verifPhotoPreview');
   var placeholder = document.getElementById('verifPhotoPlaceholder');
   if (verifCurrentPhotoUrl) {
@@ -7391,6 +7636,15 @@ function verifRetakePhoto() {
   verifPickPhoto();
 }
 
+function verifAdjQty(delta) {
+  var t = document.getElementById('verifQtyTotal');
+  var c = document.getElementById('verifQty');
+  var tot = Math.max(1, (parseInt(t.value, 10) || 1) + delta);
+  t.value = tot;
+  var cur = parseInt(c.value, 10) || 1;
+  if (cur > tot) c.value = tot;
+}
+
 function verifSave() {
   if (!verifCurrentPkg) return;
   var err = document.getElementById('verifError');
@@ -7399,6 +7653,11 @@ function verifSave() {
   var опис = document.getElementById('verifDesc').value.trim();
   var вага = document.getElementById('verifWeight').value.trim().replace(',', '.');
   var коментар = document.getElementById('verifComment').value.trim();
+  var qtyCur = parseInt(document.getElementById('verifQty').value, 10) || 1;
+  var qtyTot = parseInt(document.getElementById('verifQtyTotal').value, 10) || 1;
+  if (qtyCur < 1) qtyCur = 1;
+  if (qtyTot < 1) qtyTot = 1;
+  if (qtyCur > qtyTot) qtyCur = qtyTot;
 
   if (!опис) {
     err.textContent = 'Вкажіть опис посилки';
@@ -7428,10 +7687,12 @@ function verifSave() {
     'опис': опис,
     'вага': вага,
     'коментар': коментар,
-    'фото': verifCurrentPhotoUrl
+    'фото': verifCurrentPhotoUrl,
+    'місць_всього': qtyTot,
+    'місце_поточне': qtyCur
   }).then(function(res){
     if (res && res.ok) {
-      showToast('✅ Перевірка завершена', 'success');
+      showToast('✅ Перевірка завершена' + (qtyTot > 1 ? ' (' + qtyCur + '/' + qtyTot + ')' : ''), 'success');
       closeVerificationForm();
       // Після закриття форми якщо сканер ще активний — продовжити, інакше просто оновити дані
       if (ttnIsScanning) {

@@ -1144,6 +1144,9 @@ function apiCompleteVerification(params) {
   if (params['вага']     !== undefined) updates['Кг'] = String(params['вага']);
   if (params['коментар'] !== undefined) updates['Примітка'] = String(params['коментар']);
   if (params['фото']     !== undefined) updates['Фото посилки'] = String(params['фото']);
+  // Кількість місць (всього під цей ТТН) + поточне місце (яку коробку саме перевіряли)
+  if (params['місць_всього']  !== undefined) updates['Кількість місць'] = String(params['місць_всього']);
+  if (params['місце_поточне'] !== undefined) updates['Поточне місце'] = String(params['місце_поточне']);
 
   updates['Статус посилки'] = 'Готово';
   updates['Контроль перевірки'] = 'Готова до маршруту';
