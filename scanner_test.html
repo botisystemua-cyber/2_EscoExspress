@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Тест сканера ТТН</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .header h1 { font-size: 18px; font-weight: 700; }
+        .header p { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+
+        .status {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+        }
+        .status.success { background: #064e3b; color: #6ee7b7; }
+        .status.error { background: #7f1d1d; color: #fca5a5; }
+        .status.scanning { background: #1e3a8a; color: #93c5fd; }
+
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 16px auto;
+            background: #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        #reader video { width: 100% !important; }
+
+        .result-box {
+            margin: 12px 16px;
+            padding: 16px;
+            border-radius: 12px;
+            background: #1e293b;
+            border: 2px solid #334155;
+        }
+        .result-box.has-result {
+            background: #064e3b;
+            border-color: #10b981;
+        }
+        .result-box.error {
+            background: #7f1d1d;
+            border-color: #ef4444;
+        }
+        .result-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .result-value {
+            font-size: 22px;
+            font-weight: 800;
+            font-family: "SF Mono", Monaco, "Cascadia Code", Consolas, monospace;
+            color: #f1f5f9;
+            word-break: break-all;
+        }
+        .result-format {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+        .controls {
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary { background: #334155; color: #e2e8f0; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .history {
+            margin: 16px;
+            padding: 12px;
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        .history-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-clear {
+            background: transparent;
+            border: none;
+            color: #ef4444;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .history-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 10px 12px;
+            background: #0f172a;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item:last-child { margin-bottom: 0; }
+        .history-code { color: #e2e8f0; font-weight: 600; }
+        .history-time { color: #64748b; font-size: 10px; }
+        .history-empty {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .footer {
+            padding: 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 11px;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📷 Тест сканера ТТН</h1>
+        <p>Нова Пошта — штрих-коди Code128</p>
+    </div>
+
+    <div class="status" id="statusBar">Натисни «Старт» щоб увімкнути камеру</div>
+
+    <div id="reader"></div>
+
+    <div class="result-box" id="resultBox">
+        <div class="result-label">Останній скан</div>
+        <div class="result-value" id="resultValue">—</div>
+        <div class="result-format" id="resultFormat"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-primary" id="startBtn" onclick="startScan()">▶ Старт</button>
+        <button class="btn btn-secondary" id="nextBtn" onclick="scanNext()" disabled>🔄 Сканувати далі</button>
+        <button class="btn btn-danger" id="stopBtn" onclick="stopScan()" disabled>⏹ Стоп</button>
+    </div>
+
+    <div class="history">
+        <div class="history-title">
+            <span>📋 Історія сесії</span>
+            <button class="history-clear" onclick="clearHistory()">Очистити</button>
+        </div>
+        <div class="history-list" id="historyList">
+            <div class="history-empty">Поки нічого не відскановано</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        html5-qrcode v2.3.8 · Задня камера · Code128 / QR / EAN
+    </div>
+
+    <script>
+        var scanner = null;
+        var scanHistory = [];
+        var isScanning = false;
+
+        function setStatus(text, type) {
+            var el = document.getElementById('statusBar');
+            el.textContent = text;
+            el.className = 'status' + (type ? ' ' + type : '');
+        }
+
+        function showResult(code, format, isError) {
+            var box = document.getElementById('resultBox');
+            document.getElementById('resultValue').textContent = code || '—';
+            document.getElementById('resultFormat').textContent = format ? 'Формат: ' + format : '';
+            box.className = 'result-box ' + (isError ? 'error' : 'has-result');
+        }
+
+        function addToHistory(code, format) {
+            var now = new Date();
+            var time = now.toTimeString().substring(0, 8);
+            scanHistory.unshift({ code: code, format: format, time: time });
+            if (scanHistory.length > 10) scanHistory.pop();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            var list = document.getElementById('historyList');
+            if (scanHistory.length === 0) {
+                list.innerHTML = '<div class="history-empty">Поки нічого не відскановано</div>';
+                return;
+            }
+            list.innerHTML = scanHistory.map(function(item) {
+                return '<div class="history-item">' +
+                    '<span class="history-code">' + item.code + '</span>' +
+                    '<span class="history-time">' + item.time + '</span>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function clearHistory() {
+            scanHistory = [];
+            renderHistory();
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            var format = decodedResult && decodedResult.result && decodedResult.result.format
+                ? decodedResult.result.format.formatName || ''
+                : '';
+            showResult(decodedText, format, false);
+            addToHistory(decodedText, format);
+            setStatus('✅ Відскановано: ' + decodedText, 'success');
+
+            // Вібрація на телефоні
+            if (navigator.vibrate) navigator.vibrate(100);
+
+            // Зупиняємо сканер — щоб не сканувало повторно
+            if (scanner) {
+                scanner.pause(true);
+                document.getElementById('nextBtn').disabled = false;
+            }
+        }
+
+        function onScanError(err) {
+            // Тихо ігноруємо — викликається постійно при пошуку коду
+        }
+
+        function startScan() {
+            if (isScanning) return;
+            if (!scanner) {
+                scanner = new Html5Qrcode('reader');
+            }
+            setStatus('⏳ Запуск камери...', 'scanning');
+            document.getElementById('startBtn').disabled = true;
+
+            var config = {
+                fps: 10,
+                qrbox: { width: 280, height: 140 },
+                aspectRatio: 1.6,
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.ITF
+                ]
+            };
+
+            scanner.start(
+                { facingMode: 'environment' }, // Задня камера
+                config,
+                onScanSuccess,
+                onScanError
+            ).then(function() {
+                isScanning = true;
+                setStatus('📷 Наведи камеру на штрих-код', 'scanning');
+                document.getElementById('stopBtn').disabled = false;
+            }).catch(function(err) {
+                setStatus('❌ Помилка: ' + err, 'error');
+                document.getElementById('startBtn').disabled = false;
+                console.error('Scanner start error:', err);
+            });
+        }
+
+        function scanNext() {
+            if (!scanner || !isScanning) return;
+            scanner.resume();
+            setStatus('📷 Наведи камеру на наступний штрих-код', 'scanning');
+            document.getElementById('nextBtn').disabled = true;
+        }
+
+        function stopScan() {
+            if (!scanner || !isScanning) return;
+            scanner.stop().then(function() {
+                isScanning = false;
+                setStatus('⏸ Камера зупинена', '');
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('nextBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = true;
+            }).catch(function(err) {
+                console.error('Scanner stop error:', err);
+            });
+        }
+
+        // Автозупинка якщо таб згорнуто (економія камери)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && isScanning) stopScan();
+        });
+    </script>
+</body>
+</html>
