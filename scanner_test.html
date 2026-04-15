@@ -2,287 +2,441 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Тест сканера ТТН</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>Сканер ТТН</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; width: 100%; overflow: hidden; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #0f172a;
-            color: #f1f5f9;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            background: #000;
+            color: #fff;
+            user-select: none;
+            -webkit-user-select: none;
+            position: fixed;
+            inset: 0;
         }
-        .header {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            padding: 16px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        .header h1 { font-size: 18px; font-weight: 700; }
-        .header p { font-size: 12px; opacity: 0.9; margin-top: 4px; }
 
-        .status {
-            padding: 10px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            text-align: center;
-            background: #1e293b;
-            border-bottom: 1px solid #334155;
-        }
-        .status.success { background: #064e3b; color: #6ee7b7; }
-        .status.error { background: #7f1d1d; color: #fca5a5; }
-        .status.scanning { background: #1e3a8a; color: #93c5fd; }
-
+        /* ==== CAMERA FULLSCREEN ==== */
         #reader {
+            position: absolute;
+            inset: 0;
             width: 100%;
-            max-width: 500px;
-            margin: 16px auto;
-            background: #1e293b;
-            border-radius: 12px;
+            height: 100%;
+            z-index: 1;
+            background: #000;
             overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         }
-        #reader video { width: 100% !important; }
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+        #reader > div { border: none !important; }
+        /* Прибираємо дефолтні обведення/рамки від html5-qrcode */
+        #reader * { border-color: transparent !important; }
 
-        .result-box {
-            margin: 12px 16px;
-            padding: 16px;
-            border-radius: 12px;
-            background: #1e293b;
-            border: 2px solid #334155;
-        }
-        .result-box.has-result {
-            background: #064e3b;
-            border-color: #10b981;
-        }
-        .result-box.error {
-            background: #7f1d1d;
-            border-color: #ef4444;
-        }
-        .result-label {
-            font-size: 11px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-        }
-        .result-value {
-            font-size: 22px;
-            font-weight: 800;
-            font-family: "SF Mono", Monaco, "Cascadia Code", Consolas, monospace;
-            color: #f1f5f9;
-            word-break: break-all;
-        }
-        .result-format {
-            font-size: 11px;
-            color: #64748b;
-            margin-top: 8px;
-        }
-
-        .controls {
-            padding: 12px 16px;
+        /* ==== TOP BAR ==== */
+        .topbar {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.7), transparent);
+            z-index: 10;
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
         }
-        .btn {
-            flex: 1;
-            min-width: 140px;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 14px;
-            font-weight: 700;
+        .topbar-title {
+            font-size: 14px; font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+        .topbar-btn {
+            width: 40px; height: 40px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 18px;
             cursor: pointer;
-            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
-        .btn-primary { background: #6366f1; color: white; }
-        .btn-primary:hover { background: #4f46e5; }
-        .btn-secondary { background: #334155; color: #e2e8f0; }
-        .btn-secondary:hover { background: #475569; }
-        .btn-danger { background: #dc2626; color: white; }
-        .btn-danger:hover { background: #b91c1c; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        .history {
-            margin: 16px;
-            padding: 12px;
-            background: #1e293b;
-            border-radius: 12px;
-            border: 1px solid #334155;
+        .topbar-counter {
+            display: flex;
+            gap: 6px;
         }
-        .history-title {
+        .counter-pill {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 6px 12px;
             font-size: 12px;
             font-weight: 700;
-            color: #94a3b8;
+            color: #fff;
+        }
+
+        /* ==== SCAN FRAME OVERLAY ==== */
+        .scan-frame {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(85vw, 400px);
+            height: 180px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 16px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            z-index: 5;
+            pointer-events: none;
+        }
+        .scan-frame::before,
+        .scan-frame::after,
+        .scan-frame > span::before,
+        .scan-frame > span::after {
+            content: '';
+            position: absolute;
+            width: 28px; height: 28px;
+            border: 4px solid #10b981;
+        }
+        .scan-frame::before { top: -2px; left: -2px; border-right: none; border-bottom: none; border-top-left-radius: 14px; }
+        .scan-frame::after { top: -2px; right: -2px; border-left: none; border-bottom: none; border-top-right-radius: 14px; }
+        .scan-frame > span::before { bottom: -2px; left: -2px; border-right: none; border-top: none; border-bottom-left-radius: 14px; }
+        .scan-frame > span::after { bottom: -2px; right: -2px; border-left: none; border-top: none; border-bottom-right-radius: 14px; }
+
+        .scan-line {
+            position: absolute;
+            left: 10px; right: 10px;
+            height: 2px;
+            background: #10b981;
+            box-shadow: 0 0 12px #10b981;
+            top: 50%;
+            animation: scan-line-move 2s ease-in-out infinite;
+        }
+        @keyframes scan-line-move {
+            0%, 100% { top: 20%; }
+            50% { top: 80%; }
+        }
+
+        .scan-hint {
+            position: absolute;
+            bottom: -40px; left: 0; right: 0;
+            text-align: center;
+            font-size: 13px;
+            color: rgba(255,255,255,0.9);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+
+        /* ==== RESULT TOAST (showed briefly after scan) ==== */
+        .result-toast {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            z-index: 15;
+            background: rgba(16, 185, 129, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 20px 28px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            min-width: 260px;
+            max-width: 90vw;
+        }
+        .result-toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .result-toast.error { background: rgba(239, 68, 68, 0.95); }
+        .result-toast-icon { font-size: 36px; margin-bottom: 6px; }
+        .result-toast-label {
+            font-size: 11px;
+            font-weight: 600;
+            opacity: 0.9;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+        }
+        .result-toast-value {
+            font-size: 22px;
+            font-weight: 800;
+            font-family: "SF Mono", Monaco, Consolas, monospace;
+            margin-top: 4px;
+            word-break: break-all;
+            line-height: 1.2;
+        }
+
+        /* ==== BOTTOM CONTROLS ==== */
+        .bottombar {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 20px 20px calc(env(safe-area-inset-bottom) + 20px);
+            background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .last-scan-bar {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 10px 14px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        .last-scan-bar.show { display: flex; }
+        .last-scan-icon { font-size: 20px; }
+        .last-scan-info { flex: 1; min-width: 0; }
+        .last-scan-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+        }
+        .last-scan-code {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            font-family: "SF Mono", Monaco, monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .main-btn {
+            width: 100%;
+            padding: 18px;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        .main-btn:active { transform: scale(0.97); }
+        .btn-start { background: #10b981; color: #fff; }
+        .btn-next { background: #6366f1; color: #fff; }
+        .btn-stop { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+
+        /* ==== PRE-START SCREEN ==== */
+        .start-screen {
+            position: absolute; inset: 0;
+            z-index: 20;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+            text-align: center;
+        }
+        .start-screen.hidden { display: none; }
+        .start-logo { font-size: 72px; margin-bottom: 16px; }
+        .start-title { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+        .start-subtitle {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 40px;
+            max-width: 320px;
+            line-height: 1.5;
+        }
+        .start-btn {
+            padding: 18px 48px;
+            background: #10b981;
+            color: #fff;
+            border: none;
+            border-radius: 16px;
+            font-family: inherit;
+            font-size: 17px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(16,185,129,0.4);
+        }
+        .start-btn:active { transform: scale(0.96); }
+
+        /* ==== HISTORY DRAWER ==== */
+        .history-drawer {
+            position: absolute;
+            top: 0; right: 0; bottom: 0;
+            width: min(85vw, 380px);
+            background: #0f172a;
+            z-index: 30;
+            transform: translateX(100%);
+            transition: transform 0.25s;
+            display: flex;
+            flex-direction: column;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .history-drawer.open { transform: translateX(0); }
+        .history-drawer-header {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #1e293b;
+        }
+        .history-drawer-title { font-size: 16px; font-weight: 700; }
+        .history-drawer-close {
+            width: 36px; height: 36px;
+            background: #1e293b;
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+        .history-item {
+            padding: 12px 14px;
+            background: #1e293b;
+            border-radius: 10px;
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
-        .history-clear {
-            background: transparent;
-            border: none;
-            color: #ef4444;
-            font-size: 11px;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .history-list {
-            max-height: 250px;
-            overflow-y: auto;
-        }
-        .history-item {
-            padding: 10px 12px;
-            background: #0f172a;
-            border-radius: 8px;
-            margin-bottom: 6px;
+        .history-code {
             font-family: "SF Mono", Monaco, monospace;
             font-size: 13px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            font-weight: 600;
+            color: #fff;
+            word-break: break-all;
         }
-        .history-item:last-child { margin-bottom: 0; }
-        .history-code { color: #e2e8f0; font-weight: 600; }
-        .history-time { color: #64748b; font-size: 10px; }
+        .history-time {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            flex-shrink: 0;
+        }
         .history-empty {
             text-align: center;
-            padding: 20px;
-            color: #64748b;
-            font-size: 12px;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.4);
+            font-size: 13px;
+        }
+        .history-clear-btn {
+            margin: 12px 16px;
+            padding: 12px;
+            background: rgba(239,68,68,0.2);
+            border: 1px solid rgba(239,68,68,0.4);
+            border-radius: 10px;
+            color: #fca5a5;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
         }
 
-        .footer {
-            padding: 16px;
-            text-align: center;
-            color: #64748b;
-            font-size: 11px;
-            margin-top: auto;
+        .backdrop {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 25;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
         }
+        .backdrop.show { opacity: 1; pointer-events: all; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📷 Тест сканера ТТН</h1>
-        <p>Нова Пошта — штрих-коди Code128</p>
+
+    <!-- START SCREEN -->
+    <div class="start-screen" id="startScreen">
+        <div class="start-logo">📷</div>
+        <div class="start-title">Сканер ТТН</div>
+        <div class="start-subtitle">Натисни кнопку, дозволь доступ до камери і наведи на штрих-код накладної Нова Пошта</div>
+        <button class="start-btn" onclick="startScan()">▶ Увімкнути камеру</button>
     </div>
 
-    <div class="status" id="statusBar">Натисни «Старт» щоб увімкнути камеру</div>
-
+    <!-- CAMERA -->
     <div id="reader"></div>
 
-    <div class="result-box" id="resultBox">
-        <div class="result-label">Останній скан</div>
-        <div class="result-value" id="resultValue">—</div>
-        <div class="result-format" id="resultFormat"></div>
+    <!-- SCAN FRAME OVERLAY -->
+    <div class="scan-frame" id="scanFrame" style="display:none;">
+        <span></span>
+        <div class="scan-line" id="scanLine"></div>
+        <div class="scan-hint">Наведи на штрих-код</div>
     </div>
 
-    <div class="controls">
-        <button class="btn btn-primary" id="startBtn" onclick="startScan()">▶ Старт</button>
-        <button class="btn btn-secondary" id="nextBtn" onclick="scanNext()" disabled>🔄 Сканувати далі</button>
-        <button class="btn btn-danger" id="stopBtn" onclick="stopScan()" disabled>⏹ Стоп</button>
+    <!-- TOP BAR -->
+    <div class="topbar" id="topbar" style="display:none;">
+        <button class="topbar-btn" onclick="openHistory()">≡</button>
+        <div class="topbar-counter">
+            <div class="counter-pill" id="counterScanned">📊 0</div>
+        </div>
     </div>
 
-    <div class="history">
-        <div class="history-title">
-            <span>📋 Історія сесії</span>
-            <button class="history-clear" onclick="clearHistory()">Очистити</button>
+    <!-- RESULT TOAST -->
+    <div class="result-toast" id="resultToast">
+        <div class="result-toast-icon">✅</div>
+        <div class="result-toast-label">Відскановано</div>
+        <div class="result-toast-value" id="toastValue">—</div>
+    </div>
+
+    <!-- BOTTOM CONTROLS -->
+    <div class="bottombar" id="bottombar" style="display:none;">
+        <div class="last-scan-bar" id="lastScanBar">
+            <div class="last-scan-icon">✅</div>
+            <div class="last-scan-info">
+                <div class="last-scan-label">Останній скан</div>
+                <div class="last-scan-code" id="lastScanCode">—</div>
+            </div>
+        </div>
+        <button class="main-btn btn-next" id="mainBtn" onclick="mainBtnClick()">🔄 Сканувати далі</button>
+        <button class="main-btn btn-stop" onclick="stopScan()">✕ Завершити</button>
+    </div>
+
+    <!-- HISTORY DRAWER -->
+    <div class="backdrop" id="backdrop" onclick="closeHistory()"></div>
+    <div class="history-drawer" id="historyDrawer">
+        <div class="history-drawer-header">
+            <div class="history-drawer-title">📋 Історія сесії</div>
+            <button class="history-drawer-close" onclick="closeHistory()">×</button>
         </div>
         <div class="history-list" id="historyList">
-            <div class="history-empty">Поки нічого не відскановано</div>
+            <div class="history-empty">Поки порожньо</div>
         </div>
-    </div>
-
-    <div class="footer">
-        html5-qrcode v2.3.8 · Задня камера · Code128 / QR / EAN
+        <button class="history-clear-btn" onclick="clearHistory()">🗑 Очистити історію</button>
     </div>
 
     <script>
         var scanner = null;
         var scanHistory = [];
         var isScanning = false;
-
-        function setStatus(text, type) {
-            var el = document.getElementById('statusBar');
-            el.textContent = text;
-            el.className = 'status' + (type ? ' ' + type : '');
-        }
-
-        function showResult(code, format, isError) {
-            var box = document.getElementById('resultBox');
-            document.getElementById('resultValue').textContent = code || '—';
-            document.getElementById('resultFormat').textContent = format ? 'Формат: ' + format : '';
-            box.className = 'result-box ' + (isError ? 'error' : 'has-result');
-        }
-
-        function addToHistory(code, format) {
-            var now = new Date();
-            var time = now.toTimeString().substring(0, 8);
-            scanHistory.unshift({ code: code, format: format, time: time });
-            if (scanHistory.length > 10) scanHistory.pop();
-            renderHistory();
-        }
-
-        function renderHistory() {
-            var list = document.getElementById('historyList');
-            if (scanHistory.length === 0) {
-                list.innerHTML = '<div class="history-empty">Поки нічого не відскановано</div>';
-                return;
-            }
-            list.innerHTML = scanHistory.map(function(item) {
-                return '<div class="history-item">' +
-                    '<span class="history-code">' + item.code + '</span>' +
-                    '<span class="history-time">' + item.time + '</span>' +
-                    '</div>';
-            }).join('');
-        }
-
-        function clearHistory() {
-            scanHistory = [];
-            renderHistory();
-        }
-
-        function onScanSuccess(decodedText, decodedResult) {
-            var format = decodedResult && decodedResult.result && decodedResult.result.format
-                ? decodedResult.result.format.formatName || ''
-                : '';
-            showResult(decodedText, format, false);
-            addToHistory(decodedText, format);
-            setStatus('✅ Відскановано: ' + decodedText, 'success');
-
-            // Вібрація на телефоні
-            if (navigator.vibrate) navigator.vibrate(100);
-
-            // Зупиняємо сканер — щоб не сканувало повторно
-            if (scanner) {
-                scanner.pause(true);
-                document.getElementById('nextBtn').disabled = false;
-            }
-        }
-
-        function onScanError(err) {
-            // Тихо ігноруємо — викликається постійно при пошуку коду
-        }
+        var isPaused = false;
 
         function startScan() {
             if (isScanning) return;
-            if (!scanner) {
-                scanner = new Html5Qrcode('reader');
-            }
-            setStatus('⏳ Запуск камери...', 'scanning');
-            document.getElementById('startBtn').disabled = true;
+            if (!scanner) scanner = new Html5Qrcode('reader');
+
+            document.getElementById('startScreen').classList.add('hidden');
 
             var config = {
-                fps: 10,
-                qrbox: { width: 280, height: 140 },
-                aspectRatio: 1.6,
+                fps: 15,
+                qrbox: function(w, h) {
+                    var size = Math.min(w, h) * 0.75;
+                    return { width: Math.min(400, size), height: Math.min(180, size * 0.5) };
+                },
+                aspectRatio: 1.7778,
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.CODE_128,
                     Html5QrcodeSupportedFormats.CODE_39,
@@ -291,46 +445,128 @@
                     Html5QrcodeSupportedFormats.EAN_8,
                     Html5QrcodeSupportedFormats.UPC_A,
                     Html5QrcodeSupportedFormats.ITF
-                ]
+                ],
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
             scanner.start(
-                { facingMode: 'environment' }, // Задня камера
+                { facingMode: { exact: 'environment' } },
                 config,
                 onScanSuccess,
-                onScanError
+                function() {}
             ).then(function() {
                 isScanning = true;
-                setStatus('📷 Наведи камеру на штрих-код', 'scanning');
-                document.getElementById('stopBtn').disabled = false;
+                isPaused = false;
+                document.getElementById('scanFrame').style.display = 'block';
+                document.getElementById('topbar').style.display = 'flex';
+                document.getElementById('bottombar').style.display = 'flex';
+                document.getElementById('mainBtn').style.display = 'none';
             }).catch(function(err) {
-                setStatus('❌ Помилка: ' + err, 'error');
-                document.getElementById('startBtn').disabled = false;
-                console.error('Scanner start error:', err);
+                // Fallback: якщо точно задня не доступна — пробуємо environment без exact
+                scanner.start(
+                    { facingMode: 'environment' },
+                    config,
+                    onScanSuccess,
+                    function() {}
+                ).then(function() {
+                    isScanning = true;
+                    isPaused = false;
+                    document.getElementById('scanFrame').style.display = 'block';
+                    document.getElementById('topbar').style.display = 'flex';
+                    document.getElementById('bottombar').style.display = 'flex';
+                    document.getElementById('mainBtn').style.display = 'none';
+                }).catch(function(err2) {
+                    document.getElementById('startScreen').classList.remove('hidden');
+                    alert('Не вдалось увімкнути камеру: ' + (err2.message || err2));
+                });
             });
         }
 
-        function scanNext() {
-            if (!scanner || !isScanning) return;
+        function onScanSuccess(decodedText) {
+            if (isPaused) return;
+            isPaused = true;
+            if (scanner) scanner.pause(true);
+            if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+
+            addToHistory(decodedText);
+            showToast(decodedText);
+            document.getElementById('lastScanCode').textContent = decodedText;
+            document.getElementById('lastScanBar').classList.add('show');
+            document.getElementById('mainBtn').style.display = 'block';
+            document.getElementById('counterScanned').textContent = '📊 ' + scanHistory.length;
+
+            // Авто-підготовка до наступного скану через 1.2с (щоб юзер не тиснув кнопку кожен раз)
+            setTimeout(function() {
+                if (!isScanning) return;
+                // Прибираємо тост, але камера на паузі поки юзер не натисне
+                document.getElementById('resultToast').classList.remove('show');
+            }, 1500);
+        }
+
+        function showToast(code) {
+            var t = document.getElementById('resultToast');
+            document.getElementById('toastValue').textContent = code;
+            t.classList.add('show');
+        }
+
+        function mainBtnClick() {
+            if (!isScanning || !isPaused) return;
             scanner.resume();
-            setStatus('📷 Наведи камеру на наступний штрих-код', 'scanning');
-            document.getElementById('nextBtn').disabled = true;
+            isPaused = false;
+            document.getElementById('resultToast').classList.remove('show');
+            document.getElementById('mainBtn').style.display = 'none';
         }
 
         function stopScan() {
             if (!scanner || !isScanning) return;
             scanner.stop().then(function() {
                 isScanning = false;
-                setStatus('⏸ Камера зупинена', '');
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('nextBtn').disabled = true;
-                document.getElementById('stopBtn').disabled = true;
-            }).catch(function(err) {
-                console.error('Scanner stop error:', err);
-            });
+                isPaused = false;
+                document.getElementById('scanFrame').style.display = 'none';
+                document.getElementById('topbar').style.display = 'none';
+                document.getElementById('bottombar').style.display = 'none';
+                document.getElementById('resultToast').classList.remove('show');
+                document.getElementById('startScreen').classList.remove('hidden');
+            }).catch(function() {});
         }
 
-        // Автозупинка якщо таб згорнуто (економія камери)
+        function addToHistory(code) {
+            var time = new Date().toTimeString().substring(0, 8);
+            scanHistory.unshift({ code: code, time: time });
+            if (scanHistory.length > 50) scanHistory.pop();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            var list = document.getElementById('historyList');
+            if (scanHistory.length === 0) {
+                list.innerHTML = '<div class="history-empty">Поки порожньо</div>';
+                return;
+            }
+            list.innerHTML = scanHistory.map(function(item) {
+                return '<div class="history-item">' +
+                    '<span class="history-code">' + item.code + '</span>' +
+                    '<span class="history-time">' + item.time + '</span>' +
+                '</div>';
+            }).join('');
+        }
+
+        function clearHistory() {
+            scanHistory = [];
+            document.getElementById('counterScanned').textContent = '📊 0';
+            renderHistory();
+        }
+
+        function openHistory() {
+            document.getElementById('historyDrawer').classList.add('open');
+            document.getElementById('backdrop').classList.add('show');
+        }
+
+        function closeHistory() {
+            document.getElementById('historyDrawer').classList.remove('open');
+            document.getElementById('backdrop').classList.remove('show');
+        }
+
         document.addEventListener('visibilitychange', function() {
             if (document.hidden && isScanning) stopScan();
         });
